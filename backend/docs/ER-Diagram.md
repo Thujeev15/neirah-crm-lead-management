@@ -1,6 +1,6 @@
 erDiagram
-    USERS ||--o{ LEADS : owns
     USERS ||--o{ LEADS : creates
+    USERS ||--o{ LEADS : owns
     USERS ||--o{ FOLLOW_UPS : creates
     USERS ||--o{ FOLLOW_UPS : assigned_to
     USERS ||--o{ ACTIVITIES : performs
@@ -9,32 +9,33 @@ erDiagram
     LEADS ||--o{ FOLLOW_UPS : has
     LEADS ||--o{ ACTIVITIES : has
     LEADS ||--o{ AUDIT_LOGS : records
+    LEADS ||--o| CUSTOMERS : converts_to
 
     USERS {
         bigint id PK
-        varchar full_name
-        varchar email UK
-        varchar password_hash
-        varchar role
+        string full_name
+        string email
+        string password_hash
+        string role
         datetime created_at
         datetime updated_at
     }
 
     LEADS {
         bigint id PK
-        varchar name
-        varchar company
-        varchar email
-        varchar email_normalized
-        varchar phone
-        varchar phone_normalized
-        varchar source
-        varchar priority
-        varchar status
+        string name
+        string company
+        string email
+        string email_normalized
+        string phone
+        string phone_normalized
+        string source
+        string priority
+        string status
         bigint owner_id FK
         bigint created_by FK
         decimal deal_value
-        varchar loss_reason
+        string loss_reason
         datetime created_at
         datetime updated_at
         bigint version
@@ -45,9 +46,9 @@ erDiagram
         bigint lead_id FK
         bigint created_by FK
         bigint assigned_to FK
-        varchar type
-        varchar title
-        varchar description
+        string type
+        string title
+        string description
         datetime due_at
         datetime completed_at
         datetime created_at
@@ -57,8 +58,8 @@ erDiagram
         bigint id PK
         bigint lead_id FK
         bigint actor_id FK
-        varchar type
-        varchar description
+        string type
+        string description
         datetime created_at
     }
 
@@ -66,8 +67,18 @@ erDiagram
         bigint id PK
         bigint lead_id FK
         bigint actor_id FK
-        varchar event_type
-        varchar old_value
-        varchar new_value
+        string event_type
+        string old_value
+        string new_value
         datetime occurred_at
+    }
+
+    CUSTOMERS {
+        bigint id PK
+        bigint lead_id FK
+        string name
+        string company
+        string email
+        string phone
+        datetime converted_at
     }

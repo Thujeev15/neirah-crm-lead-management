@@ -1,4 +1,3 @@
-
 package com.neirah.backend.exception;
 
 import org.springframework.http.HttpStatus;
@@ -14,6 +13,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleIllegalArgument(
             IllegalArgumentException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(Map.of("message", exception.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(
+            IllegalStateException exception) {
 
         return ResponseEntity
                 .status(HttpStatus.CONFLICT)

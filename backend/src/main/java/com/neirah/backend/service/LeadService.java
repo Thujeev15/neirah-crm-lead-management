@@ -192,6 +192,89 @@ public class LeadService {
 
 
     @Transactional
+    public Lead updateLeadStatus(
+            Long leadId,
+            LeadStatus newStatus,
+            java.math.BigDecimal dealValue,
+            String lossReason,
+            String userEmail) {
+
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        Lead lead = leadRepository.findById(leadId)
+                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+
+        if (currentUser.getRole() != Role.MANAGER &&
+                (lead.getOwner() == null ||
+                        !lead.getOwner().getEmail().equals(userEmail))) {
+            throw new AccessDeniedException("You are not authorized to update this lead");
+        }
+
+        if (newStatus == null) {
+            throw new IllegalArgumentException("New status is required");
+        }
+
+        if (lead.getStatus() == LeadStatus.WON ||
+                lead.getStatus() == LeadStatus.LOST) {
+            throw new IllegalArgumentException("Won or Lost leads cannot change status");
+        }
+
+        if (newStatus == LeadStatus.WON &&
+                (dealValue == null || dealValue.compareTo(java.math.BigDecimal.ZERO) <= 0)) {
+            throw new IllegalArgumentException("Positive deal value is required to mark a lead as Won");
+        }
+
+        if (newStatus == LeadStatus.LOST &&
+                (lossReason == null || lossReason.isBlank())) {
+            throw new IllegalArgumentException("Loss reason is required to mark a lead as Lost");
+        }
+
+        LeadStatus oldStatus = lead.getStatus();
+
+        if (oldStatus == newStatus) {
+            throw new IllegalArgumentException("Lead already has this status");
+        }
+
+        boolean validTransition = switch (oldStatus) {
+            case NEW -> newStatus == LeadStatus.CONTACTED;
+            case CONTACTED -> newStatus == LeadStatus.QUALIFIED;
+            case QUALIFIED -> newStatus == LeadStatus.PROPOSAL_SENT;
+            case PROPOSAL_SENT -> newStatus == LeadStatus.WON
+                    || newStatus == LeadStatus.LOST;
+            case WON, LOST -> false;
+        };
+
+        if (!validTransition) {
+            throw new IllegalArgumentException(
+                    "Invalid pipeline transition: " + oldStatus + " to " + newStatus);
+        }
+
+        lead.setStatus(newStatus);
+
+        if (newStatus == LeadStatus.WON) {
+            lead.setDealValue(dealValue);
+            lead.setLossReason(null);
+        }
+
+        if (newStatus == LeadStatus.LOST) {
+            lead.setLossReason(lossReason.trim());
+            lead.setDealValue(null);
+        }
+
+        AuditLog auditLog = new AuditLog();
+        auditLog.setLead(lead);
+        auditLog.setActor(currentUser);
+        auditLog.setEventType(AuditEventType.STATUS_CHANGED);
+        auditLog.setOldValue(oldStatus.name());
+        auditLog.setNewValue(newStatus.name());
+
+        auditLogRepository.save(auditLog);
+
+        return leadRepository.save(lead);
+    }
+
+    @Transactional
     public Lead assignLead(Long leadId, String newOwnerEmail, String managerEmail) {
 
         User manager = userRepository.findByEmail(managerEmail)

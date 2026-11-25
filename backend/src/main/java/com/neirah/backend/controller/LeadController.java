@@ -3,6 +3,7 @@
 package com.neirah.backend.controller;
 
 import com.neirah.backend.dto.LeadRequest;
+import com.neirah.backend.dto.LeadStatusUpdateRequest;
 import com.neirah.backend.dto.LeadResponse;
 import com.neirah.backend.dto.DuplicateCheckResponse;
 import com.neirah.backend.entity.Lead;
@@ -130,6 +131,23 @@ public class LeadController {
         Lead updatedLead = leadService.updateLead(
                 id,
                 request,
+                authentication.getName()
+        );
+
+        return LeadResponse.from(updatedLead);
+    }
+
+    @PutMapping("/{id}/status")
+    public LeadResponse updateLeadStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody LeadStatusUpdateRequest request,
+            Authentication authentication) {
+
+        Lead updatedLead = leadService.updateLeadStatus(
+                id,
+                request.status(),
+                request.dealValue(),
+                request.lossReason(),
                 authentication.getName()
         );
 

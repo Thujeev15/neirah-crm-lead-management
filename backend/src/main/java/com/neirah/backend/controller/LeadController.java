@@ -108,4 +108,41 @@ public class LeadController {
                 "status", lead.getStatus().name()
         );
     }
+
+    @PutMapping("/{id}")
+    public LeadResponse updateLead(
+            @PathVariable Long id,
+            @Valid @RequestBody LeadRequest request,
+            Authentication authentication) {
+
+        Lead updatedLead = leadService.updateLead(
+                id,
+                request,
+                authentication.getName()
+        );
+
+        return LeadResponse.from(updatedLead);
+    }
+
+    @PutMapping("/{id}/assign")
+    public LeadResponse assignLead(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
+
+        String ownerEmail = request.get("ownerEmail");
+
+        if (ownerEmail == null || ownerEmail.isBlank()) {
+            throw new IllegalArgumentException(
+                    "ownerEmail is required");
+        }
+
+        Lead assignedLead = leadService.assignLead(
+                id,
+                ownerEmail,
+                authentication.getName()
+        );
+
+        return LeadResponse.from(assignedLead);
+    }
 }

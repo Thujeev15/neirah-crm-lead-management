@@ -239,7 +239,8 @@ public class LeadService {
         boolean validTransition = switch (oldStatus) {
             case NEW -> newStatus == LeadStatus.CONTACTED;
             case CONTACTED -> newStatus == LeadStatus.QUALIFIED;
-            case QUALIFIED -> newStatus == LeadStatus.PROPOSAL_SENT;
+            case QUALIFIED -> newStatus == LeadStatus.PROPOSAL_SENT
+                    || newStatus == LeadStatus.LOST;
             case PROPOSAL_SENT -> newStatus == LeadStatus.WON
                     || newStatus == LeadStatus.LOST;
             case WON, LOST -> false;

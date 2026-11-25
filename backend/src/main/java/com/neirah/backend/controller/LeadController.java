@@ -4,6 +4,7 @@ package com.neirah.backend.controller;
 
 import com.neirah.backend.dto.LeadRequest;
 import com.neirah.backend.dto.LeadResponse;
+import com.neirah.backend.dto.DuplicateCheckResponse;
 import com.neirah.backend.entity.Lead;
 import com.neirah.backend.entity.LeadStatus;
 import com.neirah.backend.entity.Priority;
@@ -88,6 +89,17 @@ public class LeadController {
         );
 
         return LeadResponse.from(lead);
+    }
+
+    @PostMapping("/check-duplicates")
+    public DuplicateCheckResponse checkDuplicates(
+            @Valid @RequestBody LeadRequest request,
+            Authentication authentication) {
+
+        return leadService.checkDuplicates(
+                request,
+                authentication.getName()
+        );
     }
 
     @PostMapping

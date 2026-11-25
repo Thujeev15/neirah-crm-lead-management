@@ -26,6 +26,8 @@ public class LeadRequest {
     @NotNull(message = "Priority is required")
     private Priority priority;
 
+    private boolean confirmDuplicate;
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -43,4 +45,7 @@ public class LeadRequest {
 
     public Priority getPriority() { return priority; }
     public void setPriority(Priority priority) { this.priority = priority; }
+
+    public boolean isConfirmDuplicate() { return confirmDuplicate; }
+    public void setConfirmDuplicate(boolean confirmDuplicate) { this.confirmDuplicate = confirmDuplicate; }
 }

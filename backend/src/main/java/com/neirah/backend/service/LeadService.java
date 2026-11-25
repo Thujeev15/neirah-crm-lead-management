@@ -3,6 +3,8 @@
 package com.neirah.backend.service;
 
 import com.neirah.backend.dto.LeadRequest;
+import com.neirah.backend.dto.LeadResponse;
+import com.neirah.backend.dto.DuplicateCheckResponse;
 import com.neirah.backend.entity.Lead;
 import com.neirah.backend.entity.AuditLog;
 import com.neirah.backend.entity.AuditEventType;
@@ -38,6 +40,40 @@ public class LeadService {
         this.userRepository = userRepository;
     }
 
+
+    @Transactional(readOnly = true)
+    public DuplicateCheckResponse checkDuplicates(
+            LeadRequest request, String userEmail) {
+
+        User currentUser = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        String normalizedEmail = normalizeEmail(request.getEmail());
+        String normalizedPhone = normalizePhone(request.getPhone());
+
+        java.util.Map<Long, Lead> matches = new java.util.LinkedHashMap<>();
+
+        if (normalizedEmail != null) {
+            leadRepository.findByEmailNormalized(normalizedEmail)
+                    .forEach(lead -> matches.put(lead.getId(), lead));
+        }
+
+        if (normalizedPhone != null) {
+            leadRepository.findByPhoneNormalized(normalizedPhone)
+                    .forEach(lead -> matches.put(lead.getId(), lead));
+        }
+
+        List<LeadResponse> visibleMatches = matches.values().stream()
+                .filter(lead -> currentUser.getRole() == Role.MANAGER
+                        || (lead.getOwner() != null
+                        && lead.getOwner().getEmail().equals(userEmail)))
+                .map(LeadResponse::from)
+                .toList();
+
+        return new DuplicateCheckResponse(
+                !matches.isEmpty(), visibleMatches);
+    }
+
     @Transactional
     public Lead createLead(LeadRequest request, String userEmail) {
 
@@ -47,16 +83,15 @@ public class LeadService {
         String normalizedEmail = normalizeEmail(request.getEmail());
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (normalizedEmail != null &&
-                !leadRepository.findByEmailNormalized(normalizedEmail).isEmpty()) {
-            throw new IllegalArgumentException(
-                    "A lead with this email already exists");
-        }
+        boolean emailDuplicate = normalizedEmail != null
+                && !leadRepository.findByEmailNormalized(normalizedEmail).isEmpty();
 
-        if (normalizedPhone != null &&
-                !leadRepository.findByPhoneNormalized(normalizedPhone).isEmpty()) {
+        boolean phoneDuplicate = normalizedPhone != null
+                && !leadRepository.findByPhoneNormalized(normalizedPhone).isEmpty();
+
+        if ((emailDuplicate || phoneDuplicate) && !request.isConfirmDuplicate()) {
             throw new IllegalArgumentException(
-                    "A lead with this phone already exists");
+                    "A duplicate lead exists. Review the warning and confirm before creating.");
         }
 
         Lead lead = new Lead();

@@ -1,16 +1,18 @@
-
 package com.neirah.backend.repository;
 
 import com.neirah.backend.entity.Lead;
 import com.neirah.backend.entity.LeadStatus;
 import com.neirah.backend.entity.Priority;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface LeadRepository extends JpaRepository<Lead, Long> {
 
@@ -19,6 +21,10 @@ public interface LeadRepository extends JpaRepository<Lead, Long> {
     List<Lead> findByPhoneNormalized(String phoneNormalized);
 
     List<Lead> findByOwnerEmail(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM Lead l WHERE l.id = :id")
+    Optional<Lead> findByIdForUpdate(@Param("id") Long id);
 
     @Query("""
         SELECT l FROM Lead l

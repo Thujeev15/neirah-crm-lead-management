@@ -1,6 +1,7 @@
 package com.neirah.backend.dto;
 
 import com.neirah.backend.entity.Lead;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public record LeadResponse(
@@ -13,6 +14,8 @@ public record LeadResponse(
         String priority,
         String status,
         String ownerName,
+        BigDecimal dealValue,
+        String lossReason,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -27,6 +30,8 @@ public record LeadResponse(
                 lead.getPriority().name(),
                 lead.getStatus().name(),
                 lead.getOwner() == null ? null : lead.getOwner().getFullName(),
+                lead.getDealValue(),
+                lead.getLossReason(),
                 lead.getCreatedAt(),
                 lead.getUpdatedAt()
         );

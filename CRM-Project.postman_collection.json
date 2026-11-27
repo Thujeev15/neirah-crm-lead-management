@@ -1,0 +1,675 @@
+{
+  "info": {
+    "name": "CRM Project API",
+    "description": "Postman collection generated from the implemented Spring Boot controllers and DTOs. Base URL defaults to http://localhost:8080. Register/Login are public; all other API requests use Bearer JWT authentication. Set collection variables before testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "leadId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "followUpId",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "leadOwnerEmail",
+      "value": "sales@example.com",
+      "type": "string"
+    },
+    {
+      "key": "resetUserEmail",
+      "value": "sales@example.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "description": "Register and login do not require JWT.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Public endpoint. RegisterRequest: fullName, valid email, password (minimum 8 characters).",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Silva\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Public endpoint. On success, saves response.token to the collection variable {{token}}.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  const data = pm.response.json();",
+                  "  if (data && data.token) { pm.collectionVariables.set('token', data.token); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "description": "",
+      "item": [
+        {
+          "name": "Get All Leads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Search Leads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Optional text search"
+                },
+                {
+                  "key": "status",
+                  "value": "NEW",
+                  "description": "Optional LeadStatus enum"
+                },
+                {
+                  "key": "priority",
+                  "value": "HIGH",
+                  "description": "Optional Priority enum"
+                },
+                {
+                  "key": "ownerEmail",
+                  "value": "",
+                  "description": "Optional owner email"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Page index; default 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Page size; default 10"
+                }
+              ]
+            },
+            "description": "Search parameters supported by the implemented controller: search, status, priority, ownerEmail, page, size."
+          }
+        },
+        {
+          "name": "Get Lead by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Check Duplicate Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/check-duplicates",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "check-duplicates"
+              ]
+            },
+            "description": "Uses LeadRequest body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Silva\",\n  \"company\": \"ABC Solutions\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"0771234567\",\n  \"source\": \"Website\",\n  \"priority\": \"HIGH\",\n  \"confirmDuplicate\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Lead",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads"
+              ]
+            },
+            "description": "LeadRequest. priority must be LOW, MEDIUM, or HIGH.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Silva\",\n  \"company\": \"ABC Solutions\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"0771234567\",\n  \"source\": \"Website\",\n  \"priority\": \"HIGH\",\n  \"confirmDuplicate\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}"
+              ]
+            },
+            "description": "Uses LeadRequest body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Silva\",\n  \"company\": \"ABC Solutions\",\n  \"email\": \"john@example.com\",\n  \"phone\": \"0771234567\",\n  \"source\": \"Website\",\n  \"priority\": \"MEDIUM\",\n  \"confirmDuplicate\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Lead Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "status"
+              ]
+            },
+            "description": "LeadStatus: NEW, CONTACTED, QUALIFIED, PROPOSAL_SENT, WON, LOST. For WON provide a positive dealValue; for LOST provide a lossReason.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONTACTED\",\n  \"dealValue\": null,\n  \"lossReason\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Assign Lead",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/assign",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "assign"
+              ]
+            },
+            "description": "Request body requires ownerEmail.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ownerEmail\": \"{{leadOwnerEmail}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activities",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Activity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/activities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "activities"
+              ]
+            },
+            "description": "ActivityType: NOTE, CALL, MEETING. description is required (max 2000 characters).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CALL\",\n  \"description\": \"Discussed product requirements\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Lead Activities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/activities",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "activities"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "description": "",
+      "item": [
+        {
+          "name": "Get Lead Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/audit-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "audit-logs"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Conversion",
+      "description": "",
+      "item": [
+        {
+          "name": "Convert Lead",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/convert",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "convert"
+              ]
+            },
+            "description": "Converts the specified lead. No request body is defined by the controller contract supplied."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Follow-ups",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Follow-up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/follow-ups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "follow-ups"
+              ]
+            },
+            "description": "FollowUpRequest. type: CALL, MEETING, TASK. dueAt uses LocalDateTime format yyyy-MM-dd'T'HH:mm:ss. assignedToId is optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CALL\",\n  \"title\": \"Customer Follow-up\",\n  \"description\": \"Discuss pricing with customer\",\n  \"dueAt\": \"2026-12-01T10:30:00\",\n  \"assignedToId\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Lead Follow-ups",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/follow-ups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "follow-ups"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Complete Follow-up",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/follow-ups/{{followUpId}}/complete",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "follow-ups",
+                "{{followUpId}}",
+                "complete"
+              ]
+            },
+            "description": "Marks the specified follow-up as complete. No request body is defined by the controller contract supplied."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "",
+      "item": [
+        {
+          "name": "Get Sales Representatives",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/sales-reps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "sales-reps"
+              ]
+            },
+            "description": "Manager role required."
+          }
+        },
+        {
+          "name": "Reset User Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/reset-password/{{resetUserEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "reset-password",
+                "{{resetUserEmail}}"
+              ]
+            },
+            "description": "Manager role required. Request body: newPassword.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"NewPassword@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -21,4 +21,11 @@ public class ConversionController {
             Authentication authentication) {
         return conversionService.convertLead(leadId, authentication.getName());
     }
+
+    @org.springframework.web.bind.annotation.GetMapping("/{leadId}/customer")
+    public ConversionResponse getCustomer(
+            @PathVariable Long leadId,
+            Authentication authentication) {
+        return conversionService.getCustomerForLead(leadId, authentication.getName());
+    }
 }

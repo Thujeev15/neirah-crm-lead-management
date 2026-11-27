@@ -10,6 +10,7 @@ import {
   X,
   UserRound,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
 
@@ -28,7 +29,6 @@ const initialForm = {
   title: '',
   description: '',
   dueAt: '',
-  assignedToId: '',
 }
 
 export default function FollowUps() {
@@ -37,7 +37,6 @@ export default function FollowUps() {
 
   const [followUps, setFollowUps] = useState([])
   const [leads, setLeads] = useState([])
-  const [salesReps, setSalesReps] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [formError, setFormError] = useState('')
@@ -52,35 +51,15 @@ export default function FollowUps() {
       setLoading(true)
       setError('')
 
-      const leadsResponse = await api.get('/leads')
-      const leadList = Array.isArray(leadsResponse.data)
-        ? leadsResponse.data
-        : leadsResponse.data.leads || leadsResponse.data.content || []
+      // One request for the schedule; overdue/upcoming flags are computed by the server
+      // from dueAt + completedAt. Leads are loaded only to populate the create form.
+      const [followUpsResponse, leadsResponse] = await Promise.all([
+        api.get('/follow-ups'),
+        api.get('/leads'),
+      ])
 
-      setLeads(leadList)
-
-      const results = await Promise.all(
-        leadList.map(async (lead) => {
-          try {
-            const response = await api.get(`/leads/${lead.id}/follow-ups`)
-
-            return (Array.isArray(response.data) ? response.data : []).map(
-              (item) => ({
-                ...item,
-                leadId: lead.id,
-                leadName: lead.name,
-              }),
-            )
-          } catch (err) {
-            if (err.response?.status === 403 || err.response?.status === 404) {
-              return []
-            }
-            throw err
-          }
-        }),
-      )
-
-      setFollowUps(results.flat())
+      setFollowUps(Array.isArray(followUpsResponse.data) ? followUpsResponse.data : [])
+      setLeads(Array.isArray(leadsResponse.data) ? leadsResponse.data : [])
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -94,21 +73,6 @@ export default function FollowUps() {
   useEffect(() => {
     loadFollowUps()
   }, [])
-
-  useEffect(() => {
-    if (!isManager) return
-
-    const loadSalesReps = async () => {
-      try {
-        const response = await api.get('/users/sales-reps')
-        setSalesReps(Array.isArray(response.data) ? response.data : [])
-      } catch {
-        setFormError('Unable to load sales representatives.')
-      }
-    }
-
-    loadSalesReps()
-  }, [isManager])
 
   const handleComplete = async (item) => {
     try {
@@ -147,10 +111,6 @@ export default function FollowUps() {
         title: form.title.trim(),
         description: form.description.trim() || null,
         dueAt: form.dueAt,
-      }
-
-      if (isManager && form.assignedToId) {
-        payload.assignedToId = Number(form.assignedToId)
       }
 
       await api.post(`/leads/${form.leadId}/follow-ups`, payload)
@@ -268,7 +228,7 @@ export default function FollowUps() {
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="">Choose a lead</option>
-                  {leads.map((lead) => (
+                  {leads.filter((lead) => !['WON', 'LOST'].includes(lead.status)).map((lead) => (
                     <option key={lead.id} value={lead.id}>
                       {lead.name} {lead.company ? `— ${lead.company}` : ''}
                     </option>
@@ -325,31 +285,11 @@ export default function FollowUps() {
                 />
               </div>
 
-              {isManager && (
-                <div className="md:col-span-2">
-                  <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <UserRound size={15} />
-                    Assign to Sales Representative
-                  </label>
-                  <select
-                    value={form.assignedToId}
-                    onChange={(e) =>
-                      setForm({ ...form, assignedToId: e.target.value })
-                    }
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                  >
-                    <option value="">Default lead owner</option>
-                    {salesReps.map((rep) => (
-                      <option key={rep.id} value={rep.id}>
-                        {rep.fullName} ({rep.email})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="mt-1.5 text-xs text-slate-400">
-                    Leave blank to assign this follow-up to the lead owner.
-                  </p>
-                </div>
-              )}
+              <div className="md:col-span-2 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs text-slate-500">
+                <UserRound size={14} className="mt-0.5 shrink-0" />
+                Follow-ups are assigned to the lead owner.
+                {isManager ? ' To hand work to another representative, reassign the lead from its details page.' : ''}
+              </div>
 
               <div className="md:col-span-2">
                 <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -497,7 +437,11 @@ export default function FollowUps() {
                     <div className="min-w-0">
                       <h3 className="font-semibold text-slate-900">{item.title}</h3>
                       <p className="mt-1 text-sm text-slate-500">
-                        {item.type} · {item.leadName || `Lead #${item.leadId}`}
+                        {item.type} ·{' '}
+                        <Link to={`/leads/${item.leadId}`} className="font-medium text-blue-600 hover:underline">
+                          {item.leadName || `Lead #${item.leadId}`}
+                        </Link>
+                        {item.assignedToName ? ` · ${item.assignedToName}` : ''}
                       </p>
 
                       {item.description && (

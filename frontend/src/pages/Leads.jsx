@@ -64,6 +64,8 @@ export default function Leads() {
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
   const [page, setPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
@@ -85,6 +87,8 @@ export default function Leads() {
       const response = await api.get('/leads/search', { params })
       const data = response.data
       setLeads(Array.isArray(data) ? data : data.leads || data.content || [])
+      setTotalPages(Math.max(1, data.totalPages ?? 1))
+      setTotalItems(data.totalItems ?? 0)
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -318,7 +322,9 @@ export default function Leads() {
         </div>
 
         <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4">
-          <p className="text-xs text-slate-500">Page {page + 1}</p>
+          <p className="text-xs text-slate-500">
+            Page {page + 1} of {totalPages} · {totalItems} {totalItems === 1 ? 'lead' : 'leads'}
+          </p>
           <div className="flex gap-2">
             <button
               onClick={() => setPage((current) => Math.max(0, current - 1))}
@@ -330,7 +336,7 @@ export default function Leads() {
             </button>
             <button
               onClick={() => setPage((current) => current + 1)}
-              disabled={leads.length < 10 || loading}
+              disabled={page + 1 >= totalPages || loading}
               className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
               aria-label="Next page"
             >

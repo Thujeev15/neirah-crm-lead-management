@@ -18,6 +18,8 @@ import com.neirah.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,17 +29,22 @@ import java.util.Locale;
 @Service
 public class LeadService {
 
+    private static final Logger log = LoggerFactory.getLogger(LeadService.class);
+
     private final LeadRepository leadRepository;
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
+    private final com.neirah.backend.repository.FollowUpRepository followUpRepository;
 
     public LeadService(
             LeadRepository leadRepository,
             UserRepository userRepository,
-            AuditLogRepository auditLogRepository) {
+            AuditLogRepository auditLogRepository,
+            com.neirah.backend.repository.FollowUpRepository followUpRepository) {
         this.leadRepository = leadRepository;
         this.auditLogRepository = auditLogRepository;
         this.userRepository = userRepository;
+        this.followUpRepository = followUpRepository;
     }
 
 
@@ -46,7 +53,7 @@ public class LeadService {
             LeadRequest request, String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         String normalizedEmail = normalizeEmail(request.getEmail());
         String normalizedPhone = normalizePhone(request.getPhone());
@@ -78,7 +85,7 @@ public class LeadService {
     public Lead createLead(LeadRequest request, String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         String normalizedEmail = normalizeEmail(request.getEmail());
         String normalizedPhone = normalizePhone(request.getPhone());
@@ -90,7 +97,9 @@ public class LeadService {
                 && !leadRepository.findByPhoneNormalized(normalizedPhone).isEmpty();
 
         if ((emailDuplicate || phoneDuplicate) && !request.isConfirmDuplicate()) {
-            throw new IllegalArgumentException(
+            log.info("Lead creation by {} blocked pending duplicate confirmation (email match: {}, phone match: {})",
+                    userEmail, emailDuplicate, phoneDuplicate);
+            throw new com.neirah.backend.exception.DuplicateResourceException(
                     "A duplicate lead exists. Review the warning and confirm before creating.");
         }
 
@@ -107,14 +116,17 @@ public class LeadService {
         lead.setCreatedBy(currentUser);
         lead.setOwner(currentUser);
 
-        return leadRepository.save(lead);
+        Lead saved = leadRepository.save(lead);
+        log.info("Lead {} created by {}{}", saved.getId(), userEmail,
+                (emailDuplicate || phoneDuplicate) ? " (duplicate warning acknowledged)" : "");
+        return saved;
     }
 
     @Transactional(readOnly = true)
     public List<Lead> getAllLeads(String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         if (currentUser.getRole() == Role.MANAGER) {
             return leadRepository.findAll();
@@ -128,10 +140,10 @@ public class LeadService {
     public Lead getLeadById(Long leadId, String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         if (currentUser.getRole() != Role.MANAGER &&
                 (lead.getOwner() == null ||
@@ -147,10 +159,10 @@ public class LeadService {
     public Lead updateLead(Long leadId, LeadRequest request, String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         if (currentUser.getRole() != Role.MANAGER &&
                 (lead.getOwner() == null ||
@@ -162,20 +174,25 @@ public class LeadService {
         String normalizedEmail = normalizeEmail(request.getEmail());
         String normalizedPhone = normalizePhone(request.getPhone());
 
-        if (normalizedEmail != null &&
-                leadRepository.findByEmailNormalized(normalizedEmail)
-                        .stream()
-                        .anyMatch(existing -> !existing.getId().equals(leadId))) {
-            throw new IllegalArgumentException(
-                    "Another lead with this email already exists");
-        }
+        // Only re-check duplicates when the contact value actually changes, so a lead that
+        // was deliberately created as a confirmed duplicate can still be edited.
+        boolean emailChanged = normalizedEmail != null
+                && !normalizedEmail.equals(lead.getEmailNormalized());
+        boolean phoneChanged = normalizedPhone != null
+                && !normalizedPhone.equals(lead.getPhoneNormalized());
 
-        if (normalizedPhone != null &&
-                leadRepository.findByPhoneNormalized(normalizedPhone)
-                        .stream()
-                        .anyMatch(existing -> !existing.getId().equals(leadId))) {
-            throw new IllegalArgumentException(
-                    "Another lead with this phone already exists");
+        if (!request.isConfirmDuplicate()) {
+            if (emailChanged && leadRepository.findByEmailNormalized(normalizedEmail)
+                    .stream().anyMatch(existing -> !existing.getId().equals(leadId))) {
+                throw new com.neirah.backend.exception.DuplicateResourceException(
+                        "Another lead with this email already exists. Confirm to save anyway.");
+            }
+
+            if (phoneChanged && leadRepository.findByPhoneNormalized(normalizedPhone)
+                    .stream().anyMatch(existing -> !existing.getId().equals(leadId))) {
+                throw new com.neirah.backend.exception.DuplicateResourceException(
+                        "Another lead with this phone already exists. Confirm to save anyway.");
+            }
         }
 
         lead.setName(request.getName().trim());
@@ -187,7 +204,9 @@ public class LeadService {
         lead.setSource(request.getSource());
         lead.setPriority(request.getPriority());
 
-        return leadRepository.save(lead);
+        Lead saved = leadRepository.save(lead);
+        log.info("Lead {} details updated by {}", leadId, userEmail);
+        return saved;
     }
 
 
@@ -200,10 +219,10 @@ public class LeadService {
             String userEmail) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         if (currentUser.getRole() != Role.MANAGER &&
                 (lead.getOwner() == null ||
@@ -237,8 +256,11 @@ public class LeadService {
         }
 
         boolean validTransition = switch (oldStatus) {
-            case NEW -> newStatus == LeadStatus.CONTACTED;
-            case CONTACTED -> newStatus == LeadStatus.QUALIFIED;
+            // Any open lead may be lost (e.g. spam or unresponsive); WON only after a proposal.
+            case NEW -> newStatus == LeadStatus.CONTACTED
+                    || newStatus == LeadStatus.LOST;
+            case CONTACTED -> newStatus == LeadStatus.QUALIFIED
+                    || newStatus == LeadStatus.LOST;
             case QUALIFIED -> newStatus == LeadStatus.PROPOSAL_SENT
                     || newStatus == LeadStatus.LOST;
             case PROPOSAL_SENT -> newStatus == LeadStatus.WON
@@ -272,14 +294,16 @@ public class LeadService {
 
         auditLogRepository.save(auditLog);
 
-        return leadRepository.save(lead);
+        Lead saved = leadRepository.save(lead);
+        log.info("Lead {} status changed {} -> {} by {}", leadId, oldStatus, newStatus, userEmail);
+        return saved;
     }
 
     @Transactional
     public Lead assignLead(Long leadId, String newOwnerEmail, String managerEmail) {
 
         User manager = userRepository.findByEmail(managerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Manager not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Manager not found"));
 
         if (manager.getRole() != Role.MANAGER) {
             throw new AccessDeniedException(
@@ -287,10 +311,10 @@ public class LeadService {
         }
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         User newOwner = userRepository.findByEmail(newOwnerEmail.trim().toLowerCase(Locale.ROOT))
-                .orElseThrow(() -> new IllegalArgumentException("Sales representative not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Sales representative not found"));
 
         if (newOwner.getRole() != Role.SALES_REP) {
             throw new IllegalArgumentException(
@@ -314,7 +338,16 @@ public class LeadService {
 
         auditLogRepository.save(auditLog);
 
-        return leadRepository.save(lead);
+        Lead saved = leadRepository.save(lead);
+
+        // Open follow-ups move with the lead so the new owner can act on them.
+        // Completed follow-ups keep their original assignee as history.
+        int moved = followUpRepository.reassignOpenFollowUps(leadId, newOwner);
+
+        log.info("Lead {} reassigned from {} to {} by {} ({} open follow-ups moved)", leadId,
+                oldOwner == null ? "unassigned" : oldOwner.getEmail(), newOwner.getEmail(),
+                managerEmail, moved);
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -327,7 +360,7 @@ public class LeadService {
             Pageable pageable) {
 
         User currentUser = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         String effectiveOwnerEmail;
 
@@ -340,8 +373,16 @@ public class LeadService {
         String searchTerm = (search == null || search.isBlank())
                 ? null : search.trim();
 
+        // Allow "0771000003" to find "077-100-0003". Require 3+ digits so a single
+        // digit in a name search does not match every phone number.
+        String searchDigits = searchTerm == null ? null : normalizePhone(searchTerm);
+        if (searchDigits != null && searchDigits.length() < 3) {
+            searchDigits = null;
+        }
+
         return leadRepository.searchLeads(
                 searchTerm,
+                searchDigits,
                 status,
                 priority,
                 effectiveOwnerEmail,
@@ -350,20 +391,10 @@ public class LeadService {
     }
 
     private String normalizeEmail(String email) {
-        if (email == null || email.isBlank()) {
-            return null;
-        }
-
-        return email.trim().toLowerCase(Locale.ROOT);
+        return com.neirah.backend.util.ContactNormalizer.email(email);
     }
 
     private String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) {
-            return null;
-        }
-
-        String normalized = phone.replaceAll("[^0-9]", "");
-
-        return normalized.isBlank() ? null : normalized;
+        return com.neirah.backend.util.ContactNormalizer.phone(phone);
     }
 }

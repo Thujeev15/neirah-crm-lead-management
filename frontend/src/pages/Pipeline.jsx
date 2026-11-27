@@ -61,7 +61,9 @@ export default function Pipeline() {
     (lead) => !['WON', 'LOST'].includes(lead.status),
   )
 
-  const totalValue = activeLeads.reduce(
+  // Deal values are recorded when a lead is marked Won, so the meaningful total is won revenue.
+  const wonLeads = leads.filter((lead) => lead.status === 'WON')
+  const wonValue = wonLeads.reduce(
     (sum, lead) => sum + Number(lead.dealValue || 0),
     0,
   )
@@ -109,17 +111,17 @@ export default function Pipeline() {
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-slate-500">
-              Active Deal Value
+              Won Deal Value
             </p>
             <div className="rounded-xl bg-emerald-50 p-2.5 text-emerald-600">
               <TrendingUp size={19} />
             </div>
           </div>
           <p className="mt-4 text-3xl font-bold text-slate-900">
-            {currency(totalValue)}
+            {currency(wonValue)}
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Combined value of active opportunities
+            {wonLeads.length} won {wonLeads.length === 1 ? 'deal' : 'deals'} · recorded when a lead is marked Won
           </p>
         </div>
       </div>

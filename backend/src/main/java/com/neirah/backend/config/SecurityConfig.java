@@ -93,14 +93,25 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // Public authentication endpoints
-                .requestMatchers(
-                    HttpMethod.POST,
-                    "/api/v1/auth/register",
-                    "/api/v1/auth/login"
-                ).permitAll()
+                // Login is the only public API endpoint. Sales rep accounts are
+                // created by managers (POST /api/v1/users/sales-reps).
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
 
                 // All other API endpoints require authentication
                 .anyRequest().authenticated()
+            )
+
+            .exceptionHandling(ex -> ex
+                // Unauthenticated (missing/invalid/expired JWT) -> 401
+                .authenticationEntryPoint((request, response, authException) ->
+                    writeError(response, 401, "Unauthorized",
+                        "Authentication is required to access this resource",
+                        request.getRequestURI()))
+                // Authenticated but not permitted -> 403
+                .accessDeniedHandler((request, response, accessDeniedException) ->
+                    writeError(response, 403, "Forbidden",
+                        "You do not have permission to perform this action",
+                        request.getRequestURI()))
             )
 
             .httpBasic(basic -> basic.disable())
@@ -112,5 +123,15 @@ public class SecurityConfig {
             );
 
         return http.build();
+    }
+
+    private static void writeError(jakarta.servlet.http.HttpServletResponse response,
+                                   int status, String error, String message, String path)
+            throws java.io.IOException {
+        response.setStatus(status);
+        response.setContentType("application/json");
+        response.getWriter().write(String.format(
+            "{\"timestamp\":\"%s\",\"status\":%d,\"error\":\"%s\",\"message\":\"%s\",\"path\":\"%s\"}",
+            java.time.LocalDateTime.now(), status, error, message, path.replace("\"", "")));
     }
 }

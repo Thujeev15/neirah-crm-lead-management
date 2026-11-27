@@ -1,16 +1,24 @@
-# React + Vite
+# Neirah CRM – Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + Vite + Tailwind CSS single-page app for the Neirah CRM.
 
-Currently, two official plugins are available:
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # production build to dist/
+```
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The API base URL is set in `src/api/axios.js` (`http://localhost:8080/api/v1`).
+The JWT is kept in `localStorage`, and any `401` response logs the user out automatically.
 
-## React Compiler
+| Route | Page |
+|---|---|
+| `/login` | Login |
+| `/` | Dashboard: stage counts, overdue follow-ups, leads by owner, conversion rate |
+| `/leads` | Lead list with search, filters, pagination and create (with duplicate warning) |
+| `/leads/:id` | Lead details: edit, assign (manager), stage change, conversion, follow-ups, timeline |
+| `/pipeline` | Leads grouped by pipeline stage |
+| `/follow-ups` | Follow-up schedule: upcoming, overdue, completed; create and complete |
+| `/reports` | Charts by stage, owner and source |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+See the [root README](../README.md) for full setup, demo accounts and design notes.

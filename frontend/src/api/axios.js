@@ -18,3 +18,22 @@ api.interceptors.request.use((config) => {
 })
 
 export default api
+
+// Expired or invalid JWT: clear the session and send the user back to login.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const url = error.config?.url || ''
+
+    if (status === 401 && !url.includes('/auth/login')) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('neirah_user')
+      if (window.location.pathname !== '/login') {
+        window.location.assign('/login')
+      }
+    }
+
+    return Promise.reject(error)
+  },
+)

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "CRM Project API",
-    "description": "Postman collection generated from the implemented Spring Boot controllers and DTOs. Base URL defaults to http://localhost:8080. Register/Login are public; all other API requests use Bearer JWT authentication. Set collection variables before testing.",
+    "description": "Postman collection generated from the implemented Spring Boot controllers and DTOs. Base URL defaults to http://localhost:8080. Login is public; all other API requests use Bearer JWT authentication. Set collection variables before testing.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -37,12 +37,12 @@
     },
     {
       "key": "leadOwnerEmail",
-      "value": "sales@example.com",
+      "value": "ravi@neirah.demo",
       "type": "string"
     },
     {
       "key": "resetUserEmail",
-      "value": "sales@example.com",
+      "value": "ravi@neirah.demo",
       "type": "string"
     }
   ],
@@ -51,43 +51,6 @@
       "name": "Authentication",
       "description": "Register and login do not require JWT.",
       "item": [
-        {
-          "name": "Register",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "auth",
-                "register"
-              ]
-            },
-            "description": "Public endpoint. RegisterRequest: fullName, valid email, password (minimum 8 characters).",
-            "auth": {
-              "type": "noauth"
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"fullName\": \"John Silva\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
         {
           "name": "Login",
           "request": {
@@ -110,13 +73,13 @@
                 "login"
               ]
             },
-            "description": "Public endpoint. On success, saves response.token to the collection variable {{token}}.",
+            "description": "Public endpoint. On success, saves response.token to the collection variable {{token}}. Seeded demo accounts: manager@neirah.demo, ravi@neirah.demo, nisha@neirah.demo, arun@neirah.demo (password Demo@1234). The token is saved to {{token}} automatically.",
             "auth": {
               "type": "noauth"
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}",
+              "raw": "{\n  \"email\": \"manager@neirah.demo\",\n  \"password\": \"Demo@1234\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -520,7 +483,28 @@
                 "convert"
               ]
             },
-            "description": "Converts the specified lead. No request body is defined by the controller contract supplied."
+            "description": "Convert a Won lead. Repeat calls return the existing customer (alreadyConverted=true). If another customer already has the same email, the lead is linked to it (linkedToExistingCustomer=true) instead of creating a duplicate."
+          }
+        },
+        {
+          "name": "Get Converted Customer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/leads/{{leadId}}/customer",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "leads",
+                "{{leadId}}",
+                "customer"
+              ]
+            },
+            "description": "Returns the customer created from this lead, or 404 if it has not been converted."
           }
         }
       ]
@@ -552,10 +536,10 @@
                 "follow-ups"
               ]
             },
-            "description": "FollowUpRequest. type: CALL, MEETING, TASK. dueAt uses LocalDateTime format yyyy-MM-dd'T'HH:mm:ss. assignedToId is optional.",
+            "description": "Create a follow-up. It is always assigned to the lead owner; assignedToId for anyone else is rejected (400). Not allowed on Won/Lost leads.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"type\": \"CALL\",\n  \"title\": \"Customer Follow-up\",\n  \"description\": \"Discuss pricing with customer\",\n  \"dueAt\": \"2026-12-01T10:30:00\",\n  \"assignedToId\": 2\n}",
+              "raw": "{\n  \"type\": \"CALL\",\n  \"title\": \"Customer Follow-up\",\n  \"description\": \"Discuss pricing with customer\",\n  \"dueAt\": \"2026-12-01T10:30:00\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -607,6 +591,31 @@
             },
             "description": "Marks the specified follow-up as complete. No request body is defined by the controller contract supplied."
           }
+        },
+        {
+          "name": "List Follow-ups (all visible leads)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/follow-ups?status=OVERDUE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "follow-ups"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "OVERDUE"
+                }
+              ]
+            },
+            "description": "Cross-lead schedule. status = ALL | UPCOMING | OVERDUE | COMPLETED. Managers see all leads; sales reps see leads they own. Overdue is computed from dueAt and completedAt."
+          }
         }
       ]
     },
@@ -614,6 +623,40 @@
       "name": "Users",
       "description": "",
       "item": [
+        {
+          "name": "Create Sales Rep (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/users/sales-reps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "sales-reps"
+              ]
+            },
+            "description": "Manager only. There is no public sign-up; managers create sales rep accounts. Log in as manager@neirah.demo first.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"John Silva\",\n  \"email\": \"john@neirah.demo\",\n  \"password\": \"Password@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
         {
           "name": "Get Sales Representatives",
           "request": {
@@ -657,7 +700,7 @@
                 "{{resetUserEmail}}"
               ]
             },
-            "description": "Manager role required. Request body: newPassword.",
+            "description": "Manager role required. Request body: newPassword. Resetting a password ends the user's existing sessions (old JWTs return 401).",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"newPassword\": \"NewPassword@123\"\n}",
@@ -667,6 +710,31 @@
                 }
               }
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/dashboard/summary",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "summary"
+              ]
+            },
+            "description": "Counts by stage, overdue/upcoming follow-ups, leads by owner, won value and conversion rate (won / total leads). Scoped by role."
           }
         }
       ]

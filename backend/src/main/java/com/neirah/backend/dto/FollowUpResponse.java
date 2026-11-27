@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public record FollowUpResponse(
         Long id,
         Long leadId,
+        String leadName,
         String title,
         String description,
         FollowUpType type,
@@ -21,6 +22,7 @@ public record FollowUpResponse(
         return new FollowUpResponse(
                 followUp.getId(),
                 followUp.getLead().getId(),
+                followUp.getLead().getName(),
                 followUp.getTitle(),
                 followUp.getDescription(),
                 followUp.getType(),

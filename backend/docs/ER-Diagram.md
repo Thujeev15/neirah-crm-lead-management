@@ -9,16 +9,18 @@ erDiagram
     LEADS ||--o{ FOLLOW_UPS : has
     LEADS ||--o{ ACTIVITIES : has
     LEADS ||--o{ AUDIT_LOGS : records
-    LEADS ||--o| CUSTOMERS : converts_to
+    LEADS ||--o| CUSTOMERS : source_of
+    CUSTOMERS |o--o{ LEADS : converted_leads
 
     USERS {
         bigint id PK
         string full_name
-        string email
+        string email UK
         string password_hash
         string role
         datetime created_at
         datetime updated_at
+        int token_version
     }
 
     LEADS {
@@ -34,6 +36,7 @@ erDiagram
         string status
         bigint owner_id FK
         bigint created_by FK
+        bigint customer_id FK "customer this lead converted into"
         decimal deal_value
         string loss_reason
         datetime created_at
@@ -75,10 +78,11 @@ erDiagram
 
     CUSTOMERS {
         bigint id PK
-        bigint lead_id FK
+        bigint lead_id FK, UK "source lead the customer was first created from"
         string name
         string company
         string email
+        string email_normalized UK "matches the same person across leads"
         string phone
         datetime converted_at
     }

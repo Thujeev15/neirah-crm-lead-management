@@ -35,10 +35,10 @@ public class AuditLogService {
                 .getAuthentication().getName();
 
         User currentUser = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         if (!"MANAGER".equals(currentUser.getRole().name())
                 && (lead.getOwner() == null

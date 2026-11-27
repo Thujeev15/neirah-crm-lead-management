@@ -55,6 +55,7 @@ function MetricCard({ label, value, note, icon: Icon, color }) {
 
 export default function Reports() {
   const [leads, setLeads] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -63,8 +64,13 @@ export default function Reports() {
       setLoading(true)
       setError('')
 
-      const response = await api.get('/leads')
+      // Rates come from the server so Reports and the Dashboard always show the same numbers.
+      const [response, summaryResponse] = await Promise.all([
+        api.get('/leads'),
+        api.get('/dashboard/summary'),
+      ])
       const data = response.data
+      setSummary(summaryResponse.data)
 
       setLeads(
         Array.isArray(data)
@@ -107,13 +113,12 @@ export default function Reports() {
       won: won.length,
       lost: lost.length,
       active: active.length,
-      conversion: leads.length
-        ? Math.round((won.length / leads.length) * 100)
-        : 0,
+      conversion: summary?.conversionRate ?? 0,
+      winRate: summary?.winRate ?? 0,
       totalDealValue,
       wonValue,
     }
-  }, [leads])
+  }, [leads, summary])
 
   const stageData = stages.map((stage) => ({
     name: stage.label,
@@ -184,7 +189,7 @@ export default function Reports() {
         <MetricCard
           label="Conversion Rate"
           value={loading ? '—' : `${analytics.conversion}%`}
-          note="Won leads divided by total leads"
+          note={`Won ÷ all leads · win rate ${analytics.winRate}% (won ÷ closed)`}
           icon={TrendingUp}
           color="bg-violet-50 text-violet-600"
         />

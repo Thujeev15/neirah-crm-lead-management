@@ -18,9 +18,14 @@ import {
   ArrowRightLeft,
   Plus,
   UserRoundCog,
+  Pencil,
+  BadgeCheck,
+  BadgeDollarSign,
+  ListTodo,
 } from 'lucide-react'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import LeadForm from '../components/leads/LeadForm'
 
 const statusStyles = {
   NEW: 'bg-slate-100 text-slate-700',
@@ -99,6 +104,18 @@ export default function LeadDetails() {
   const [assignmentError, setAssignmentError] = useState('')
   const [assignmentSuccess, setAssignmentSuccess] = useState('')
 
+  const [showEdit, setShowEdit] = useState(false)
+  const [editSuccess, setEditSuccess] = useState('')
+
+  // Conversion state
+  const [customer, setCustomer] = useState(null)
+  const [converting, setConverting] = useState(false)
+  const [conversionError, setConversionError] = useState('')
+  const [conversionMessage, setConversionMessage] = useState('')
+
+  // Follow-ups for this lead (shown to prove they survive reassignment)
+  const [leadFollowUps, setLeadFollowUps] = useState([])
+
   const loadLead = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -172,6 +189,50 @@ export default function LeadDetails() {
     }
   }, [id])
 
+  const loadCustomer = useCallback(async () => {
+    try {
+      const response = await api.get(`/leads/${id}/customer`)
+      setCustomer(response.data)
+    } catch {
+      setCustomer(null) // 404 = not converted yet
+    }
+  }, [id])
+
+  const loadLeadFollowUps = useCallback(async () => {
+    try {
+      const response = await api.get(`/leads/${id}/follow-ups`)
+      setLeadFollowUps(Array.isArray(response.data) ? response.data : [])
+    } catch {
+      setLeadFollowUps([])
+    }
+  }, [id])
+
+  const handleConvert = async () => {
+    setConverting(true)
+    setConversionError('')
+    setConversionMessage('')
+
+    try {
+      const response = await api.post(`/leads/${id}/convert`)
+      setCustomer(response.data)
+      const data = response.data
+      setConversionMessage(
+        data.alreadyConverted
+          ? `This lead was already converted (customer #${data.customerId}). No duplicate was created.`
+          : data.linkedToExistingCustomer
+            ? `${data.name} is already customer #${data.customerId} (same email). This deal was linked to that customer instead of creating a duplicate.`
+            : `Customer #${data.customerId} created successfully.`,
+      )
+      await loadTimeline()
+    } catch (err) {
+      setConversionError(
+        err.response?.data?.message || 'Unable to convert this lead.',
+      )
+    } finally {
+      setConverting(false)
+    }
+  }
+
   // Load available sales representatives for managers
   const loadSalesReps = useCallback(async () => {
     if (!isManager) return
@@ -195,7 +256,9 @@ export default function LeadDetails() {
   useEffect(() => {
     loadLead()
     loadTimeline()
-  }, [loadLead, loadTimeline])
+    loadCustomer()
+    loadLeadFollowUps()
+  }, [loadLead, loadTimeline, loadCustomer, loadLeadFollowUps])
 
   useEffect(() => {
     if (isManager) {
@@ -206,7 +269,7 @@ export default function LeadDetails() {
   useEffect(() => {
     if (lead && salesReps.length > 0) {
       const currentOwner = salesReps.find(
-        (rep) => rep.fullName === lead.ownerName,
+        (rep) => rep.email === lead.ownerEmail,
       )
       setSelectedOwner(currentOwner?.email || '')
     }
@@ -229,9 +292,9 @@ export default function LeadDetails() {
         ownerEmail: selectedOwner,
       })
 
-      setAssignmentSuccess('Lead reassigned successfully.')
+      setAssignmentSuccess('Lead reassigned successfully. Notes, follow-ups and history were retained.')
 
-      await Promise.all([loadLead(), loadTimeline()])
+      await Promise.all([loadLead(), loadTimeline(), loadLeadFollowUps()])
     } catch (err) {
       setAssignmentError(
         err.response?.data?.message ||
@@ -341,8 +404,23 @@ export default function LeadDetails() {
     )
   }
 
+  const canEdit = isManager || lead.ownerEmail === user?.email
+  const isClosed = lead.status === 'WON' || lead.status === 'LOST'
+
   return (
     <div className="mx-auto max-w-[1200px] space-y-6">
+      {showEdit && (
+        <LeadForm
+          lead={lead}
+          onClose={() => setShowEdit(false)}
+          onSaved={async () => {
+            setShowEdit(false)
+            setEditSuccess('Lead details updated successfully.')
+            await loadLead()
+          }}
+        />
+      )}
+
       <Link
         to="/leads"
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600"
@@ -376,6 +454,18 @@ export default function LeadDetails() {
             <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">
               {lead.priority || 'MEDIUM'} PRIORITY
             </span>
+            {canEdit && (
+              <button
+                onClick={() => {
+                  setEditSuccess('')
+                  setShowEdit(true)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Pencil size={13} />
+                Edit Lead
+              </button>
+            )}
           </div>
         </div>
       </section>
@@ -399,8 +489,77 @@ export default function LeadDetails() {
             value={formatDate(lead.createdAt)}
           />
           <InfoItem icon={User} label="Lead source" value={lead.source} />
+          <InfoItem
+            icon={CalendarDays}
+            label="Last updated"
+            value={formatDate(lead.updatedAt)}
+          />
+          {lead.dealValue != null && (
+            <InfoItem
+              icon={BadgeDollarSign}
+              label="Deal value"
+              value={Number(lead.dealValue).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            />
+          )}
+          {lead.lossReason && (
+            <InfoItem icon={AlertCircle} label="Loss reason" value={lead.lossReason} />
+          )}
         </div>
+
+        {editSuccess && (
+          <p className="mt-6 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+            {editSuccess}
+          </p>
+        )}
       </section>
+
+      {lead.status === 'WON' && (
+        <section className="rounded-2xl border border-emerald-100 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
+                <BadgeCheck size={20} />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900">Customer Conversion</h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  {customer
+                    ? customer.linkedToExistingCustomer
+                      ? `Linked to existing customer #${customer.customerId} (created from lead #${customer.sourceLeadId}).`
+                      : `Converted to customer #${customer.customerId} on ${formatDate(customer.convertedAt)}.`
+                    : 'This lead is Won and can be converted into a customer record.'}
+                </p>
+              </div>
+            </div>
+
+            {canEdit && (
+              <button
+                onClick={handleConvert}
+                disabled={converting}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                <BadgeCheck size={16} />
+                {converting
+                  ? 'Converting...'
+                  : customer
+                    ? 'Convert Again (idempotent)'
+                    : 'Convert to Customer'}
+              </button>
+            )}
+          </div>
+
+          {conversionMessage && (
+            <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">
+              {conversionMessage}
+            </p>
+          )}
+          {conversionError && (
+            <p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {conversionError}
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Manager-only lead assignment */}
       {isManager && (
@@ -479,10 +638,58 @@ export default function LeadDetails() {
       )}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex items-center gap-2">
+          <ListTodo size={18} className="text-blue-600" />
+          <h2 className="text-base font-bold text-slate-900">Follow-ups</h2>
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Scheduled calls, meetings and tasks for this lead. Manage them from the{' '}
+          <Link to="/follow-ups" className="font-semibold text-blue-600 hover:underline">Follow-ups page</Link>.
+        </p>
+
+        {leadFollowUps.length === 0 ? (
+          <p className="mt-5 rounded-xl border border-dashed border-slate-200 py-6 text-center text-sm text-slate-400">
+            No follow-ups scheduled for this lead.
+          </p>
+        ) : (
+          <ul className="mt-5 divide-y divide-slate-100 rounded-xl border border-slate-100">
+            {leadFollowUps.map((item) => (
+              <li key={item.id} className="flex flex-col justify-between gap-2 p-4 sm:flex-row sm:items-center">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{item.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.type} · Due {formatDate(item.dueAt)}
+                    {item.assignedToName ? ` · ${item.assignedToName}` : ''}
+                  </p>
+                </div>
+                <span
+                  className={`self-start rounded-full px-3 py-1 text-xs font-semibold sm:self-auto ${
+                    item.completed
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : item.overdue
+                        ? 'bg-red-50 text-red-700'
+                        : 'bg-blue-50 text-blue-700'
+                  }`}
+                >
+                  {item.completed ? 'Completed' : item.overdue ? 'Overdue' : 'Upcoming'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <h2 className="text-base font-bold text-slate-900">Change Lead Stage</h2>
         <p className="mt-1 text-xs text-slate-500">
           Update the sales pipeline stage according to the allowed transitions.
         </p>
+
+        {isClosed && (
+          <p className="mt-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+            This lead is {lead.status}. Won and Lost are final stages, so the server will reject further changes.
+          </p>
+        )}
 
         <form onSubmit={handleStatusUpdate} className="mt-5 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">

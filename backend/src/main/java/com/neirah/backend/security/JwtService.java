@@ -26,12 +26,15 @@ public class JwtService {
         );
     }
 
-    public String generateToken(String email) {
+    private static final String TOKEN_VERSION_CLAIM = "tv";
+
+    public String generateToken(String email, int tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(email)
+                .claim(TOKEN_VERSION_CLAIM, tokenVersion)
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -42,20 +45,17 @@ public class JwtService {
         return extractAllClaims(token).getSubject();
     }
 
-    public boolean isTokenValid(String token, String email) {
+    /** Valid when the signature, subject and expiry check out and the version is current. */
+    public boolean isTokenValid(String token, String email, int currentTokenVersion) {
         try {
-            String tokenEmail = extractEmail(token);
-            return tokenEmail.equals(email)
-                    && !isTokenExpired(token);
+            Claims claims = extractAllClaims(token);
+            Integer version = claims.get(TOKEN_VERSION_CLAIM, Integer.class);
+            return claims.getSubject().equals(email)
+                    && !claims.getExpiration().before(new Date())
+                    && (version == null ? 0 : version) == currentTokenVersion;
         } catch (Exception exception) {
             return false;
         }
-    }
-
-    private boolean isTokenExpired(String token) {
-        return extractAllClaims(token)
-                .getExpiration()
-                .before(new Date());
     }
 
     private Claims extractAllClaims(String token) {

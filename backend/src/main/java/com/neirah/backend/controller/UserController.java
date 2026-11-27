@@ -20,15 +20,31 @@ import java.util.Map;
 @RequestMapping("/api/v1/users")
 public class UserController {
 
+    private static final org.slf4j.Logger log =
+            org.slf4j.LoggerFactory.getLogger(UserController.class);
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final com.neirah.backend.service.AuthService authService;
 
     public UserController(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            com.neirah.backend.service.AuthService authService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authService = authService;
+    }
+
+    @PostMapping("/sales-reps")
+    @PreAuthorize("hasRole('MANAGER')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserSummaryResponse createSalesRep(
+            @jakarta.validation.Valid @RequestBody com.neirah.backend.dto.RegisterRequest request,
+            org.springframework.security.core.Authentication authentication
+    ) {
+        return authService.createSalesRep(request, authentication.getName());
     }
 
     @GetMapping("/sales-reps")
@@ -72,7 +88,10 @@ public class UserController {
         }
 
         user.setPasswordHash(passwordEncoder.encode(newPassword));
+        // Existing JWTs for this user stop working immediately.
+        user.incrementTokenVersion();
         userRepository.save(user);
+        log.info("Password reset for {}; existing sessions invalidated", normalizedEmail);
 
         return Map.of("message", "Sales Rep password reset successfully");
     }

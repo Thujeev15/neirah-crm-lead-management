@@ -55,7 +55,11 @@ public class LeadController {
             );
         }
 
-        Pageable pageable = PageRequest.of(page, size);
+        // Deterministic order (newest first, id as tie-breaker) so pages never overlap or skip rows.
+        Pageable pageable = PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Order.desc("createdAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id")));
 
         Page<Lead> results = leadService.searchLeads(
                 authentication.getName(),

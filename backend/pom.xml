@@ -53,10 +53,12 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Flyway Database Migrations -->
+        <!-- Flyway Database Migrations.
+             Spring Boot 4 ships Flyway auto-configuration in its own starter;
+             flyway-core alone does NOT run migrations on startup. -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-flyway</artifactId>
         </dependency>
 
         <dependency>

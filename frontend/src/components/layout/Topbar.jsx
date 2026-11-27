@@ -1,5 +1,5 @@
 
-import { Bell, Search, Menu, CalendarDays } from 'lucide-react'
+import { Bell, Menu, CalendarDays } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
 export default function Topbar({ onMenuClick }) {

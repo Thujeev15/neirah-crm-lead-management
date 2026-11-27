@@ -24,6 +24,10 @@ public class Customer {
     @Column(length = 150)
     private String email;
 
+    /** Normalised email used to recognise the same person across leads. */
+    @Column(name = "email_normalized", length = 150, unique = true)
+    private String emailNormalized;
+
     @Column(length = 30)
     private String phone;
 
@@ -69,6 +73,14 @@ public class Customer {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getEmailNormalized() {
+        return emailNormalized;
+    }
+
+    public void setEmailNormalized(String emailNormalized) {
+        this.emailNormalized = emailNormalized;
     }
 
     public String getPhone() {

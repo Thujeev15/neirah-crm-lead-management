@@ -9,18 +9,20 @@ import jakarta.validation.constraints.Size;
 public class LeadRequest {
 
     @NotBlank(message = "Lead name is required")
-    @Size(max = 150)
+    @Size(max = 150, message = "Lead name cannot exceed 150 characters")
     private String name;
 
-    @Size(max = 150)
+    @Size(max = 150, message = "Company cannot exceed 150 characters")
     private String company;
 
     @Email(message = "Enter a valid email")
+    @Size(max = 150, message = "Email cannot exceed 150 characters")
     private String email;
 
-    @Size(max = 30)
+    @Size(max = 30, message = "Phone cannot exceed 30 characters")
     private String phone;
 
+    @Size(max = 50, message = "Source cannot exceed 50 characters")
     private String source;
 
     @NotNull(message = "Priority is required")

@@ -12,6 +12,9 @@ The system has two roles:
 | Feature / Action | Manager | Sales Representative |
 |---|---|---|
 | Login | Yes | Yes |
+| Create Sales Rep accounts (no public sign-up) | Yes | No |
+| Reset a Sales Rep password (ends their sessions) | Yes | No |
+| List sales representatives | Yes | No |
 | View all leads | Yes | No |
 | View assigned leads | Yes | Yes |
 | Create leads | Yes | Yes |
@@ -21,9 +24,9 @@ The system has two roles:
 | Reassign leads | Yes | No |
 | Change lead status | Yes | Yes (assigned leads only) |
 | Record notes and activities | Yes | Yes (assigned leads only) |
-| Create follow-ups | Yes | Yes (assigned leads only) |
+| Create follow-ups (always assigned to the lead owner) | Yes | Yes (assigned leads only) |
 | Complete follow-ups | Yes | Yes (assigned leads only) |
-| View dashboard and reports | Yes | No |
+| View dashboard and reports | Yes (all leads) | Yes (own leads only) |
 | View activity timeline | Yes | Yes (assigned leads only) |
 | View audit history | Yes | Yes (assigned leads only) |
 | Convert Won leads to customers | Yes | Yes (assigned leads only) |

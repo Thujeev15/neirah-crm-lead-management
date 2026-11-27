@@ -24,6 +24,13 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    /**
+     * Incremented whenever credentials change (e.g. password reset). Every JWT carries the
+     * version it was issued with, so older tokens stop working immediately.
+     */
+    @Column(name = "token_version", nullable = false)
+    private int tokenVersion = 0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -86,6 +93,14 @@ public class User {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public int getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void incrementTokenVersion() {
+        this.tokenVersion++;
     }
 
     public LocalDateTime getUpdatedAt() {

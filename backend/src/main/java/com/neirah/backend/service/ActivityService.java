@@ -6,6 +6,8 @@ import com.neirah.backend.repository.ActivityRepository;
 import com.neirah.backend.repository.LeadRepository;
 import com.neirah.backend.repository.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +15,8 @@ import java.util.List;
 
 @Service
 public class ActivityService {
+
+    private static final Logger log = LoggerFactory.getLogger(ActivityService.class);
 
     private final ActivityRepository activityRepository;
     private final LeadRepository leadRepository;
@@ -41,10 +45,10 @@ public class ActivityService {
             Long leadId, ActivityRequest request, String userEmail) {
 
         User actor = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         checkAccess(lead, actor);
 
@@ -54,7 +58,9 @@ public class ActivityService {
         activity.setType(request.type());
         activity.setDescription(request.description().trim());
 
-        return ActivityResponseData.from(activityRepository.save(activity));
+        Activity saved = activityRepository.save(activity);
+        log.info("{} activity {} recorded on lead {} by {}", saved.getType(), saved.getId(), leadId, userEmail);
+        return ActivityResponseData.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -62,10 +68,10 @@ public class ActivityService {
             Long leadId, String userEmail) {
 
         User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found"));
 
         Lead lead = leadRepository.findById(leadId)
-                .orElseThrow(() -> new IllegalArgumentException("Lead not found"));
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Lead not found"));
 
         checkAccess(lead, user);
 

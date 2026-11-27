@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Users,
-  UserPlus,
+
   Trophy,
   TrendingUp,
   ArrowUpRight,
@@ -9,7 +9,9 @@ import {
   Clock3,
   Target,
   RefreshCw,
+  AlarmClock,
 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,6 +23,7 @@ import {
   CartesianGrid,
 } from 'recharts'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 
 const stages = [
   { key: 'NEW', label: 'New', color: '#94A3B8' },
@@ -64,7 +67,10 @@ function StatusBadge({ status }) {
 }
 
 export default function Dashboard() {
+  const { user } = useAuth()
+  const isManager = user?.role === 'MANAGER'
   const [leads, setLeads] = useState([])
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -73,8 +79,13 @@ export default function Dashboard() {
     setError('')
 
     try {
-      const response = await api.get('/leads')
-      setLeads(response.data)
+      // Metrics are computed server-side; the lead list feeds the "recent leads" table.
+      const [summaryResponse, leadsResponse] = await Promise.all([
+        api.get('/dashboard/summary'),
+        api.get('/leads'),
+      ])
+      setSummary(summaryResponse.data)
+      setLeads(Array.isArray(leadsResponse.data) ? leadsResponse.data : [])
     } catch (err) {
       console.error('Dashboard lead loading failed:', err.response?.data || err)
       setError('Unable to load dashboard data. Please try again.')
@@ -87,23 +98,27 @@ export default function Dashboard() {
     loadLeads()
   }, [])
 
-  const stats = useMemo(() => {
-    const won = leads.filter((lead) => lead.status === 'WON').length
-    const active = leads.filter((lead) => !['WON', 'LOST'].includes(lead.status)).length
+  const stats = useMemo(() => ({
+    total: summary?.totalLeads ?? 0,
+    active: summary?.activeLeads ?? 0,
+    won: summary?.wonLeads ?? 0,
+    conversion: summary?.conversionRate ?? 0,
+    winRate: summary?.winRate ?? 0,
+    overdue: summary?.overdueFollowUps ?? 0,
+    upcoming: summary?.upcomingFollowUps ?? 0,
+    customers: summary?.customers ?? 0,
+  }), [summary])
 
-    return {
-      total: leads.length,
-      active,
-      won,
-      conversion: leads.length ? Math.round((won / leads.length) * 100) : 0,
-    }
-  }, [leads])
+  const stageCount = (key) => summary?.countsByStage?.[key] ?? 0
 
   const chartData = stages.map((stage) => ({
     name: stage.label,
-    leads: leads.filter((lead) => lead.status === stage.key).length,
+    leads: stageCount(stage.key),
     fill: stage.color,
   }))
+
+  const leadsByOwner = summary?.leadsByOwner ?? []
+  const maxOwnerLeads = Math.max(1, ...leadsByOwner.map((row) => row.leads))
 
   const recentLeads = [...leads]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -141,7 +156,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <MetricCard
           label="Total leads"
           value={loading ? '—' : stats.total}
@@ -159,17 +174,26 @@ export default function Dashboard() {
         <MetricCard
           label="Deals won"
           value={loading ? '—' : stats.won}
-          note="Successfully converted leads"
+          note={`${stats.customers} converted to customers`}
           icon={Trophy}
           iconClass="bg-emerald-50 text-emerald-600"
         />
         <MetricCard
           label="Conversion rate"
           value={loading ? '—' : `${stats.conversion}%`}
-          note="Won leads divided by all leads"
+          note={`Won ÷ all leads · win rate ${stats.winRate}% (won ÷ closed)`}
           icon={TrendingUp}
           iconClass="bg-amber-50 text-amber-600"
         />
+        <Link to="/follow-ups" className="block transition hover:-translate-y-0.5">
+          <MetricCard
+            label="Overdue follow-ups"
+            value={loading ? '—' : stats.overdue}
+            note={`${stats.upcoming} upcoming · past due and not completed`}
+            icon={AlarmClock}
+            iconClass={stats.overdue > 0 ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-500'}
+          />
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.55fr_1fr]">
@@ -213,8 +237,8 @@ export default function Dashboard() {
 
           <div className="mt-6 space-y-5">
             {stages.map((stage) => {
-              const count = leads.filter((lead) => lead.status === stage.key).length
-              const percentage = leads.length ? (count / leads.length) * 100 : 0
+              const count = stageCount(stage.key)
+              const percentage = stats.total ? (count / stats.total) * 100 : 0
 
               return (
                 <div key={stage.key}>
@@ -238,15 +262,46 @@ export default function Dashboard() {
         </section>
       </div>
 
+      {isManager && (
+        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/30 sm:p-6">
+          <h2 className="text-sm font-bold text-slate-900">Leads by owner</h2>
+          <p className="mt-1 text-xs text-slate-400">Current workload per sales representative</p>
+
+          <div className="mt-5 space-y-4">
+            {loading ? (
+              <p className="text-xs text-slate-400">Loading owners...</p>
+            ) : leadsByOwner.length === 0 ? (
+              <p className="text-xs text-slate-400">No leads assigned yet.</p>
+            ) : leadsByOwner.map((row) => (
+              <div key={row.ownerEmail || 'unassigned'}>
+                <div className="mb-1.5 flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-700">
+                    {row.ownerName}
+                    {row.ownerEmail && <span className="ml-1 text-slate-400">({row.ownerEmail})</span>}
+                  </span>
+                  <span className="font-bold text-slate-800">{row.leads}</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-blue-500"
+                    style={{ width: `${(row.leads / maxOwnerLeads) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/30">
         <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:px-6">
           <div>
             <h2 className="text-sm font-bold text-slate-900">Recent leads</h2>
             <p className="mt-1 text-xs text-slate-400">Latest leads added to your workspace</p>
           </div>
-          <a href="/leads" className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700">
+          <Link to="/leads" className="inline-flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700">
             View all leads <ArrowRight size={14} />
-          </a>
+          </Link>
         </div>
 
         <div className="overflow-x-auto">

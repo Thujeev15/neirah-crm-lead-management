@@ -54,6 +54,11 @@ public class Lead {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
+    /** Customer this lead converted into. Several Won leads can share one customer. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
+
     @Column(precision = 12, scale = 2)
     private BigDecimal dealValue;
 
@@ -97,6 +102,8 @@ public class Lead {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public Long getVersion() { return version; }
+    public Customer getCustomer() { return customer; }
+    public void setCustomer(Customer customer) { this.customer = customer; }
 
     public void setName(String name) { this.name = name; }
     public void setCompany(String company) { this.company = company; }

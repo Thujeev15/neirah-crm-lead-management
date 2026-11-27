@@ -111,6 +111,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(Exception ex, HttpServletRequest request) {
+        // Spring MVC's own client errors (unknown route -> 404, wrong method -> 405,
+        // unsupported content type -> 415, missing parameter -> 400) carry their status.
+        if (ex instanceof org.springframework.web.ErrorResponse errorResponse
+                && errorResponse.getStatusCode().is4xxClientError()) {
+            HttpStatus status = HttpStatus.valueOf(errorResponse.getStatusCode().value());
+            return build(status, status.getReasonPhrase(), request, null);
+        }
+
         log.error("Unexpected error on {} {}", request.getMethod(), request.getRequestURI(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred", request, null);

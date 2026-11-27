@@ -99,6 +99,20 @@ class ApiIntegrationTest {
     }
 
     @Test
+    void frameworkClientErrorsKeepTheirStatusInsteadOf500() throws Exception {
+        mockMvc.perform(get("/api/v1/does-not-exist").header("Authorization", bearer(manager)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+
+        mockMvc.perform(delete("/api/v1/leads/1").header("Authorization", bearer(manager)))
+                .andExpect(status().isMethodNotAllowed());
+
+        mockMvc.perform(post("/api/v1/leads").header("Authorization", bearer(manager))
+                        .contentType(MediaType.TEXT_PLAIN).content("x"))
+                .andExpect(status().isUnsupportedMediaType());
+    }
+
+    @Test
     void salesRepCannotAccessManagerOnlyEndpoint() throws Exception {
         mockMvc.perform(get("/api/v1/users/sales-reps").header("Authorization", bearer(rep)))
                 .andExpect(status().isForbidden())

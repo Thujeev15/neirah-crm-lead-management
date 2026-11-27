@@ -36,6 +36,16 @@ const statusStyles = {
   LOST: 'bg-red-50 text-red-700',
 }
 
+// Mirrors the server's pipeline rules (LeadService.updateLeadStatus).
+const NEXT_STAGES = {
+  NEW: ['CONTACTED', 'LOST'],
+  CONTACTED: ['QUALIFIED', 'LOST'],
+  QUALIFIED: ['PROPOSAL_SENT', 'LOST'],
+  PROPOSAL_SENT: ['WON', 'LOST'],
+  WON: [],
+  LOST: [],
+}
+
 function InfoItem({ icon: Icon, label, value }) {
   return (
     <div className="flex items-start gap-3">
@@ -709,10 +719,11 @@ export default function LeadDetails() {
               <select
                 value={selectedStatus}
                 onChange={(event) => setSelectedStatus(event.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-400"
+                disabled={isClosed || !canEdit}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-blue-400 disabled:bg-slate-50"
               >
                 <option value="">Select a stage</option>
-                {['CONTACTED', 'QUALIFIED', 'PROPOSAL_SENT', 'WON', 'LOST'].map((status) => (
+                {(NEXT_STAGES[lead.status] || []).map((status) => (
                   <option key={status} value={status}>
                     {status.replaceAll('_', ' ')}
                   </option>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Search,
   RefreshCw,
@@ -70,7 +70,12 @@ export default function Leads() {
   const [error, setError] = useState('')
   const [showCreate, setShowCreate] = useState(false)
 
+  // Each keystroke starts a request; only the newest one may update the table,
+  // otherwise a slow older response can overwrite newer results.
+  const latestRequest = useRef(0)
+
   const loadLeads = useCallback(async () => {
+    const requestId = ++latestRequest.current
     setLoading(true)
     setError('')
 
@@ -85,17 +90,19 @@ export default function Leads() {
       if (priority) params.priority = priority
 
       const response = await api.get('/leads/search', { params })
+      if (requestId !== latestRequest.current) return
       const data = response.data
       setLeads(Array.isArray(data) ? data : data.leads || data.content || [])
       setTotalPages(Math.max(1, data.totalPages ?? 1))
       setTotalItems(data.totalItems ?? 0)
     } catch (err) {
+      if (requestId !== latestRequest.current) return
       setError(
         err.response?.data?.message ||
         'Unable to load leads. Please try again.',
       )
     } finally {
-      setLoading(false)
+      if (requestId === latestRequest.current) setLoading(false)
     }
   }, [page, search, status, priority])
 

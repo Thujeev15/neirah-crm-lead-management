@@ -365,7 +365,9 @@ public class LeadService {
         String effectiveOwnerEmail;
 
         if (currentUser.getRole() == Role.MANAGER) {
-            effectiveOwnerEmail = ownerEmail;
+            // Emails are stored lower-case, so match the filter the same way.
+            effectiveOwnerEmail = (ownerEmail == null || ownerEmail.isBlank())
+                    ? null : ownerEmail.trim().toLowerCase(Locale.ROOT);
         } else {
             effectiveOwnerEmail = userEmail;
         }

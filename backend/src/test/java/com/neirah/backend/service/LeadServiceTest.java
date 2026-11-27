@@ -4,6 +4,7 @@
 package com.neirah.backend.service;
 
 import com.neirah.backend.entity.*;
+import com.neirah.backend.dto.LeadRequest;
 import com.neirah.backend.repository.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -210,4 +211,51 @@ class LeadServiceTest {
         assertSame(lead, result);
         assertEquals("Test Lead", result.getName());
     }
+
+    @Test
+    void duplicateEmailIsDetected() {
+
+        LeadRequest request = new LeadRequest();
+        request.setName("Duplicate Lead");
+        request.setEmail("TEST@example.com");
+        request.setPriority(Priority.MEDIUM);
+
+        lead.setEmail("test@example.com");
+        lead.setOwner(salesRep);
+
+        when(userRepository.findByEmail("rep@example.com"))
+                .thenReturn(Optional.of(salesRep));
+
+        when(leadRepository.findByEmailNormalized("test@example.com"))
+                .thenReturn(List.of(lead));
+
+        var result = leadService.checkDuplicates(request, "rep@example.com");
+
+        assertTrue(result.duplicateFound());
+        assertEquals(1, result.matches().size());
+    }
+
+    @Test
+    void duplicateLeadCreationRequiresConfirmation() {
+
+        LeadRequest request = new LeadRequest();
+        request.setName("Duplicate Lead");
+        request.setEmail("test@example.com");
+        request.setPriority(Priority.MEDIUM);
+        request.setConfirmDuplicate(false);
+
+        when(userRepository.findByEmail("rep@example.com"))
+                .thenReturn(Optional.of(salesRep));
+
+        when(leadRepository.findByEmailNormalized("test@example.com"))
+                .thenReturn(List.of(lead));
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> leadService.createLead(request, "rep@example.com")
+        );
+
+        verify(leadRepository, never()).save(any(Lead.class));
+    }
+
 }

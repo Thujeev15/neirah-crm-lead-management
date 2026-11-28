@@ -145,6 +145,13 @@ The seed data (`V2__seed_demo_data.sql`) contains:
 - One lead with no email and one with no phone, to show how missing values are handled.
 
 Dates are relative to the time the migration runs, so overdue and upcoming items stay correct whenever you set up the project.
+ 
+**Note on Follow-up Date Selection:**
+
+Past dates are intentionally allowed when creating follow-ups. This is for testing and demonstration purposes, allowing testers to verify how the system handles overdue follow-ups and past-due tasks.
+
+This is a deliberate testing decision, not an oversight.
+
 
 > **Existing database:** if `crm_db` already had tables created by Hibernate, Flyway treats the
 > current schema as version 1 (`baseline-on-migrate`) and applies `V2` and `V3` on top. Seed users are added

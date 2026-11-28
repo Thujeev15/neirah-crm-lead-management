@@ -7,11 +7,19 @@ import LeadDetails from './pages/LeadDetails'
 import FollowUps from './pages/FollowUps'
 import Pipeline from './pages/Pipeline'
 import Reports from './pages/Reports'
+import Users from './pages/Users'
+import Customers from './pages/Customers'
 import DashboardLayout from './components/layout/DashboardLayout'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
   return user ? children : <Navigate to="/login" replace />
+}
+
+// UI-level guard only: the backend's @PreAuthorize("hasRole('MANAGER')") remains the real check.
+function ManagerRoute({ children }) {
+  const { user } = useAuth()
+  return user?.role === 'MANAGER' ? children : <Navigate to="/" replace />
 }
 
 function AppRoutes() {
@@ -38,6 +46,8 @@ function AppRoutes() {
         <Route path="follow-ups" element={<FollowUps />} />
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="users" element={<ManagerRoute><Users /></ManagerRoute>} />
+        <Route path="customers" element={<ManagerRoute><Customers /></ManagerRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

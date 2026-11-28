@@ -4,9 +4,7 @@ import {
 
   Trophy,
   TrendingUp,
-  ArrowUpRight,
   ArrowRight,
-  Clock3,
   Target,
   RefreshCw,
   AlarmClock,
@@ -24,6 +22,7 @@ import {
 } from 'recharts'
 import api from '../api/axios'
 import { useAuth } from '../context/AuthContext'
+import TeamOverview from '../components/dashboard/TeamOverview'
 
 const stages = [
   { key: 'NEW', label: 'New', color: '#94A3B8' },
@@ -116,9 +115,6 @@ export default function Dashboard() {
     leads: stageCount(stage.key),
     fill: stage.color,
   }))
-
-  const leadsByOwner = summary?.leadsByOwner ?? []
-  const maxOwnerLeads = Math.max(1, ...leadsByOwner.map((row) => row.leads))
 
   const recentLeads = [...leads]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
@@ -262,36 +258,7 @@ export default function Dashboard() {
         </section>
       </div>
 
-      {isManager && (
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/30 sm:p-6">
-          <h2 className="text-sm font-bold text-slate-900">Leads by owner</h2>
-          <p className="mt-1 text-xs text-slate-400">Current workload per sales representative</p>
-
-          <div className="mt-5 space-y-4">
-            {loading ? (
-              <p className="text-xs text-slate-400">Loading owners...</p>
-            ) : leadsByOwner.length === 0 ? (
-              <p className="text-xs text-slate-400">No leads assigned yet.</p>
-            ) : leadsByOwner.map((row) => (
-              <div key={row.ownerEmail || 'unassigned'}>
-                <div className="mb-1.5 flex items-center justify-between text-xs">
-                  <span className="font-medium text-slate-700">
-                    {row.ownerName}
-                    {row.ownerEmail && <span className="ml-1 text-slate-400">({row.ownerEmail})</span>}
-                  </span>
-                  <span className="font-bold text-slate-800">{row.leads}</span>
-                </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-                  <div
-                    className="h-full rounded-full bg-blue-500"
-                    style={{ width: `${(row.leads / maxOwnerLeads) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {isManager && <TeamOverview leads={leads} leadsLoading={loading} />}
 
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm shadow-slate-200/30">
         <div className="flex flex-col justify-between gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:px-6">
@@ -341,18 +308,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600">
-          <Clock3 size={17} />
-        </div>
-        <div>
-          <p className="text-xs font-bold text-slate-800">Stay on top of every opportunity</p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Your lead data is securely loaded based on your account permissions.
-          </p>
-        </div>
-        <ArrowUpRight size={17} className="ml-auto shrink-0 text-blue-500" />
-      </div>
     </div>
   )
 }

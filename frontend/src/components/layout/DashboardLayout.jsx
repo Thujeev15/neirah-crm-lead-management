@@ -11,7 +11,7 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen bg-[#F6F8FC]">
-      <div className="hidden lg:block">
+      <div className="hidden bg-[#0B1530] lg:block">
         <Sidebar />
       </div>
 

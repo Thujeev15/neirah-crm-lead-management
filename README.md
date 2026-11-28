@@ -288,9 +288,12 @@ Suggested 10–15 minute flow using the seed data:
 
 ## 🎥 Demo Video
 
-Watch the project short demonstration video:
+Watch the project short demonstration video: OLD
 
 [Click here to watch the Demo Video](https://drive.google.com/drive/folders/1kb3Kl3Lwbz0WT73jHY9pWRJy4oct5E3m?usp=sharing)
+this one is old ui and without user management 
 
-https://drive.google.com/drive/folders/1kb3Kl3Lwbz0WT73jHY9pWRJy4oct5E3m?usp=sharing
+
+"I will upload an updated demo video soon-----
+
 >>>>>>> c2d901a (Add demo video link to README)

@@ -295,5 +295,6 @@ this one is old ui and without user management
 
 
 "I will upload an updated demo video soon-----
+![alt text](image.png)
 
 >>>>>>> c2d901a (Add demo video link to README)

@@ -30,6 +30,14 @@ The system has two roles:
 | View activity timeline | Yes | Yes (assigned leads only) |
 | View audit history | Yes | Yes (assigned leads only) |
 | Convert Won leads to customers | Yes | Yes (assigned leads only) |
+| View customer records and profiles | Yes (all customers) | Yes (customers from assigned leads only, via the API) |
+| Reassign a customer's account owner (reassigns the originating lead) | Yes | No |
+
+### Manager-only screens in the frontend
+
+The **User management** (`/users`) and **Customers** (`/customers`) pages are shown to Managers only;
+Sales Reps who open them are redirected to the Overview. This is a convenience only: the permissions
+above are enforced by the backend whatever the client does.
 
 ## 3. Business Authorization Rules
 

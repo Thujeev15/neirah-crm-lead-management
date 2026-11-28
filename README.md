@@ -5,22 +5,26 @@ scheduling follow-ups and converting won leads into customers without losing his
 
 Built with **Spring Boot 4 (Java 21) · React 19 + Vite · MySQL · JWT**.
 
+![Neirah CRM sign-in page: product overview on the left, sign-in card on the right](image.png)
+
 ---
 
 ## Contents
 
 1. [Features](#features)
-2. [Project structure](#project-structure)
-3. [Prerequisites](#prerequisites)
-4. [Environment variables](#environment-variables)
-5. [Setup and run](#setup-and-run)
-6. [Demo accounts and seed data](#demo-accounts-and-seed-data)
-7. [Running the tests](#running-the-tests)
-8. [API documentation](#api-documentation)
-9. [Design documents](#design-documents)
-10. [Assumptions and design decisions](#assumptions-and-design-decisions)
-11. [Known limitations](#known-limitations)
-12. [Demo walkthrough](#demo-walkthrough)
+2. [What each role can do](#what-each-role-can-do)
+3. [Project structure](#project-structure)
+4. [Prerequisites](#prerequisites)
+5. [Environment variables](#environment-variables)
+6. [Setup and run](#setup-and-run)
+7. [Demo accounts and seed data](#demo-accounts-and-seed-data)
+8. [Running the tests](#running-the-tests)
+9. [API documentation](#api-documentation)
+10. [Design documents](#design-documents)
+11. [Assumptions and design decisions](#assumptions-and-design-decisions)
+12. [Known limitations](#known-limitations)
+13. [Demo walkthrough](#demo-walkthrough)
+14. [Demo video](#demo-video)
 
 ---
 
@@ -37,8 +41,50 @@ Built with **Spring Boot 4 (Java 21) · React 19 + Vite · MySQL · JWT**.
 | Activity timeline | Notes, calls and meetings merged with owner changes, status changes and conversions, each showing who did it and when |
 | Duplicate detection | Email and phone are normalised before comparing. The user is warned and must confirm before a duplicate is created |
 | Conversion | Won lead → customer. Transactional and idempotent: a repeat request returns the existing customer, and a Won lead whose email matches an existing customer is linked to that customer instead of creating a duplicate |
-| Dashboard | Counts by stage, overdue follow-ups, leads by owner, conversion rate, win rate and won deal value |
+| Dashboard | Counts by stage, overdue follow-ups, conversion rate, win rate and won deal value. Managers also get a **Team performance** section: open, won and lost leads per rep, reps with overdue follow-ups, and recently added reps |
+| User management (manager) | Sales team page with workload per rep (open leads, won deals, win rate, overdue follow-ups), search, filters, sorting and pagination. A details drawer per rep, **Add sales rep** and **Reset password** |
+| Customers (manager) | Every customer across the team, with search, owner and source filters, sorting and pagination. A customer profile drawer shows contact details, linked won deals, follow-ups and the full activity history. Managers can **reassign the account owner** and **log interactions** (note, call or meeting) |
+| Interface | Responsive single-page app (desktop, tablet and mobile) with loading, empty and error states, confirmation dialogs for sensitive actions, and success notifications |
 | Reliability | Optimistic locking (`@Version`) on leads, a row lock during conversion, one error format for every API error, and application logging |
+
+## What each role can do
+
+The backend enforces every rule below. The frontend also hides manager-only pages from sales reps,
+but that's a convenience, not the security boundary.
+
+| Capability | Manager | Sales Rep | Where in the app |
+|---|---|---|---|
+| View leads | All leads | Own leads only | **Leads**, **Sales pipeline** |
+| Create and edit leads, change stage, log activities | Any lead | Own leads only | **Leads**, lead details |
+| Assign or reassign a lead | ✅ (to Sales Reps only) | ❌ | Lead details |
+| Convert a Won lead to a customer | Any lead | Own leads only | Lead details |
+| Follow-ups (schedule, complete, overdue view) | All leads | Own leads only | **Follow-ups**, lead details |
+| Dashboard and reports | Whole team, plus Team performance | Own figures only | **Overview**, **Reports & analytics** |
+| View the sales team and each rep's workload | ✅ | ❌ | **User management** |
+| Create a sales rep account | ✅ | ❌ | **User management** → *Add sales rep* |
+| Reset a sales rep's password (signs them out everywhere) | ✅ | ❌ | **User management** → rep → *Reset password* |
+| View all customers and customer profiles | ✅ | ❌ (page is manager-only) | **Customers** |
+| Reassign a customer's account owner | ✅ | ❌ | **Customers** → customer → *Reassign owner* |
+| Log a note, call or meeting on a customer | ✅ | ❌ (page is manager-only) | **Customers** → customer → *Log interaction* |
+
+### User management (`/users`, manager only)
+
+- **Team list:** each Sales Rep with ID, name, email, role, open leads, won deals, win rate and overdue follow-ups. Search by name or email, filter by workload (*Has overdue*, *No open leads*), sort by name, newest added, most open leads or most overdue, 8 per page.
+- **Rep details:** account details, workload figures, and lists of the rep's overdue follow-ups and open leads (each links to the lead).
+- **Add sales rep:** full name, work email and a temporary password (at least 8 characters). A duplicate email is rejected with a clear message.
+- **Reset password:** a confirmation dialog names the rep. The new password must be at least 8 characters and is typed twice. The rep is signed out of every device immediately, and the password is never shown or stored by the app afterwards.
+
+Uses: `GET /users/sales-reps`, `POST /users/sales-reps`, `PUT /users/reset-password/{email}`, plus `GET /leads` and `GET /follow-ups?status=OVERDUE` for the workload figures.
+
+### Customers (`/customers`, manager only)
+
+- **Customer list:** name, email, company, phone, account owner, lead source, won deal value and *Customer since* date. Customers with several won deals are marked. KPIs show total customers, won deal value, new customers this month, and won leads still awaiting conversion, each linked to its lead.
+- **Search and filters:** search by name, email, company or phone digits; filter by account owner and lead source; sort by newest, oldest, name or highest value; 10 per page.
+- **Customer profile:** contact details (clickable email and phone), customer ID, account owner, lead source, lead creation and conversion dates, won deal value, linked won deals, follow-ups (done, overdue, upcoming), and one timeline of notes, calls, meetings, stage changes, owner changes and the conversion.
+- **Reassign owner:** a confirmation dialog shows the current and new owner and explains the effect before anything changes.
+- **Log interaction:** add a note, call or meeting (up to 2,000 characters) to the customer's history.
+
+Uses: `GET /leads`, `GET /leads/{id}/customer`, `GET /leads/{id}/activities`, `GET /leads/{id}/audit-logs`, `GET /leads/{id}/follow-ups`, `PUT /leads/{id}/assign` and `POST /leads/{id}/activities`. See [Assumptions](#assumptions-and-design-decisions) for how the customer list is built.
 
 ## Project structure
 
@@ -62,7 +108,21 @@ CRM-Project/
 │   ├── src/test/                    Unit and integration tests
 │   └── docs/                        ER diagram, API contract, permissions, OpenAPI export, test evidence
 ├── frontend/                        React + Vite + Tailwind single-page app
-│   └── src/{pages,components,context,api}
+│   └── src/
+│       ├── api/                     Axios client (JWT header, logout on 401)
+│       ├── context/                 Authentication state
+│       ├── hooks/                   Shared hooks (notifications)
+│       ├── pages/                   Login, Dashboard, Leads, LeadDetails, Pipeline, FollowUps,
+│       │                            Reports, Users (manager), Customers (manager)
+│       └── components/
+│           ├── brand/               Neirah logo
+│           ├── layout/              Sidebar, top bar, page layout
+│           ├── leads/               Lead form
+│           ├── dashboard/           Team performance section
+│           ├── users/               Rep details drawer, add rep and reset password dialogs
+│           ├── customers/           Customer data loading, profile drawer, reassign dialog
+│           └── ui/                  Dialog, drawer and notification building blocks
+├── image.png                        Screenshot used in this README
 └── CRM-Project.postman_collection.json
 ```
 
@@ -165,13 +225,21 @@ cd backend
 mvn test
 ```
 
-**44 tests, all passing.** They run against an in-memory H2 database, so no MySQL or environment
+**45 tests, all passing.** They run against an in-memory H2 database, so no MySQL or environment
 variables are needed. The suite includes:
 
 - **Unit tests** (Mockito) for lead rules, duplicate detection, assignment, audit events, follow-up overdue logic and conversion.
-- **Integration tests** (MockMvc) that go through the real JWT security filter chain, controllers, services and database. They cover 401/403 handling, ownership checks, idempotent conversion, duplicate warnings, validation errors and role-scoped dashboards.
+- **Integration tests** (MockMvc) that go through the real JWT security filter chain, controllers, services and database. They cover 401/403 handling, ownership checks, idempotent conversion, duplicate warnings, validation errors, role-scoped dashboards, and correct status codes (404, 405, 415) for unknown routes, methods and content types.
 
 See **[backend/docs/Test-Evidence.md](backend/docs/Test-Evidence.md)** for the latest run output and a table mapping each test to a business rule.
+
+The frontend has no automated test suite. To check it builds cleanly:
+
+```bash
+cd frontend
+npm run build    # production build
+npm run lint     # oxlint
+```
 
 ## API documentation
 
@@ -245,6 +313,19 @@ Status codes: `400` validation or business-rule violation · `401` not authentic
 - Customers are matched on **email only**, not phone, because phone lines can be shared by different people (the same reason duplicate leads only trigger a warning). Leads without an email always create a new customer.
 - Leads use optimistic locking (`@Version`). If two saves of the same lead collide, the second gets a 409 conflict instead of silently overwriting the first.
 
+**User management**
+- The User management page lists **Sales Rep accounts only**, because that's what `GET /users/sales-reps` returns. Manager accounts aren't listed.
+- Workload figures (open leads, won deals, win rate, overdue follow-ups) are calculated in the browser from the manager's lead list and overdue follow-ups. They aren't stored anywhere.
+- **Newest added** sorts by user ID, because IDs are assigned in creation order and the API doesn't return a created date for users.
+- Password reset works for Sales Reps only (the backend rejects other roles) and needs at least 8 characters.
+
+**Customers**
+- **How the list is built:** the backend has no "list customers" endpoint. The page takes every Won lead the manager can see, calls `GET /leads/{id}/customer` for each (up to 6 at a time), and groups leads that share a customer ID, so repeat deals appear under one customer. A Won lead that returns 404 hasn't been converted yet and is shown under *Awaiting conversion*.
+- **Account owner** means the owner of the lead the customer was created from (`sourceLeadId`). That's the same rule the backend uses to decide which customers a Sales Rep can see.
+- **Reassigning a customer** therefore reassigns that originating lead (`PUT /leads/{id}/assign`). The backend records an `OWNER_CHANGED` audit event and moves the lead's open follow-ups to the new owner; notes stay where they are. Other won deals linked to the same customer keep their own owners.
+- **Logged interactions** are stored as activities on the customer's lead (the originating lead by default, or a chosen linked deal), because customers have no activity table of their own.
+- The Customers page is manager-only in the app. The underlying endpoints are not: a Sales Rep can still read customers for their own leads through the API, and the backend limits them to those.
+
 **Dashboard**
 - **Conversion rate** = Won ÷ all visible leads × 100: how many enquiries become deals.
 - **Win rate** = Won ÷ (Won + Lost) × 100: how many closed opportunities are won.
@@ -254,7 +335,9 @@ Status codes: `400` validation or business-rule violation · `401` not authentic
 ## Known limitations
 
 - No email, SMS or WhatsApp notifications and no background reminder jobs. The PDF lists these as optional.
-- No admin screen for managing users. Managers create sales reps and reset their passwords through the API (Swagger or Postman).
+- **User management is limited to what the API supports:** create a Sales Rep and reset a Sales Rep's password. There is no account status (active/inactive), no editing user details, no role changes, no deactivation, and no API to list managers. The API returns no sign-up date or last sign-in for users.
+- **Customer management is limited to what the API supports:** view, reassign the owner (through the originating lead), and log interactions. There is no customer status, no editing or deleting customers, no owner field on the customer itself, and no scheduling of follow-ups for customers (the backend rejects follow-ups on Won leads).
+- **No `GET /customers` endpoint.** The Customers page makes one request per Won lead. That's fine at demo scale but would be slow with hundreds of customers; a paginated customers endpoint would fix it.
 - Won and Lost leads cannot be reopened.
 - Deal values are only recorded when a lead is Won; there is no estimated value for open opportunities.
 - The client does not send the lead version with updates, so optimistic locking only catches saves that collide on the server. It does not detect a user editing from a stale page.
@@ -263,14 +346,12 @@ Status codes: `400` validation or business-rule violation · `401` not authentic
 - Times use the server's local time zone.
 - Only the backend has automated tests; the frontend was checked manually.
 
-<<<<<<< HEAD
-=======
 ## Demo walkthrough
 
-Suggested 10–15 minute flow using the seed data:
+Suggested 15–20 minute flow using the seed data:
 
 **Successful workflows**
-1. Log in as **`manager@neirah.demo`**. The dashboard shows counts by stage, 3 overdue follow-ups, leads by owner and the conversion rate.
+1. Log in as **`manager@neirah.demo`**. The dashboard shows counts by stage, 3 overdue follow-ups and the conversion rate. Scroll to **Team performance** to see each rep's open, won and lost leads and who has overdue follow-ups.
 2. **Leads** → search, filter by status and priority, and page through results. Filtering by owner is available through the API (`ownerEmail`).
 3. **Create a lead.** Enter the email `KASUN@LotusRetail.example` and the duplicate warning appears, listing the existing lead. Confirm to create it anyway, or cancel.
 4. Open **Malini Herath**. The timeline shows she was reassigned from Nisha to Arun and that Nisha's notes were kept. Reassign her to Ravi and watch the new audit entry appear.
@@ -278,23 +359,34 @@ Suggested 10–15 minute flow using the seed data:
 6. Log out and log in as **`ravi@neirah.demo`**. **Follow-ups** → filter by Overdue. Malini's *Requirements workshop* now appears in his list, because it moved with the lead in step 4. Mark it complete and watch the overdue count go down.
 7. Open **Kasun Jayawardena** and move him through the pipeline: New → Contacted, recording a call activity along the way.
 
+**Manager: user management**
+
+8. Log in as **`manager@neirah.demo`** and open **User management**. The table lists every Sales Rep with open leads, won deals, win rate and overdue follow-ups. Filter by **Has overdue**, then search by a name or email.
+9. Click a rep to open their details: workload figures, overdue follow-ups and open leads, each linking to the lead.
+10. **Reset password:** from a rep's row menu or details drawer, choose *Reset password*, enter a new password twice and confirm. A success message appears, and the rep must now sign in with the new password (their existing sessions end immediately).
+11. **Add sales rep:** click *Add sales rep*, enter a name, email and temporary password. The new rep appears at the top of the list and can sign in straight away.
+
+**Manager: customers**
+
+12. Open **Customers**. Every converted customer across the team is listed with account owner, lead source, won value and *Customer since* date. Try the owner and source filters, sort by highest value, and search by phone digits.
+13. Click a customer to open their profile: contact details, linked won deals, follow-ups and the full timeline, including the `CONVERTED` event.
+14. **Log interaction:** add a call or note. It appears at the top of the timeline.
+15. **Reassign owner:** choose a new Sales Rep, review the *current → new* summary and confirm. The owner updates in the profile and the table, and the change is recorded in the lead's history.
+
 **Failure and edge cases**
 1. Mark a Proposal Sent lead **Won with deal value 0**. It is rejected: *"Positive deal value is required"*.
 2. Try **New → Won** directly. It is rejected: *"Invalid pipeline transition"*.
 3. Mark a lead **Lost with no reason**. It is rejected.
 4. As `ravi@neirah.demo`, open `/leads/<id of an Arun lead>`. The result is **403 Forbidden**.
 5. In Postman, call any endpoint without a token. The result is **401** with the JSON error body.
+6. As `ravi@neirah.demo`, go to `/users` or `/customers`. The app sends him back to the Overview, and the manager-only API (`GET /api/v1/users/sales-reps`) returns **403** if called directly.
+7. As the manager, **Add sales rep** with an existing email such as `ravi@neirah.demo`. It is rejected: *"An account with this email already exists."*
+8. **Reset password** with fewer than 8 characters, or with two different passwords. Each is blocked with a message before anything is sent.
+9. On the login page, sign in with a wrong password. The backend's *"Invalid email or password"* is shown and no session is created.
 
+## Demo video
 
-## 🎥 Demo Video
+[Watch the demonstration video (Google Drive)](https://drive.google.com/drive/folders/1kb3Kl3Lwbz0WT73jHY9pWRJy4oct5E3m?usp=sharing)
 
-Watch the project short demonstration video: OLD
-
-[Click here to watch the Demo Video](https://drive.google.com/drive/folders/1kb3Kl3Lwbz0WT73jHY9pWRJy4oct5E3m?usp=sharing)
-this one is old ui and without user management 
-
-
-"I will upload an updated demo video soon-----
-![alt text](image.png)
-
->>>>>>> c2d901a (Add demo video link to README)
+> This recording shows an earlier version of the interface, before the redesigned login page,
+> User management and Customers were added. An updated video covering these will be added.

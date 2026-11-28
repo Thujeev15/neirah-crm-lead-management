@@ -130,7 +130,7 @@ Win rate = Won ÷ (Won + Lost) × 100.
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
 | POST | `/leads/{id}/convert` | Convert a Won lead into a customer. A repeat call returns the existing customer with `alreadyConverted: true` | Manager, assigned Rep |
-| GET | `/leads/{id}/customer` | Customer created from this lead (404 if not converted) | Manager, assigned Rep |
+| GET | `/leads/{id}/customer` | The customer this lead converted into: either a customer created from it, or an existing customer it was linked to by email (`linkedToExistingCustomer: true`). 404 if not converted | Manager, assigned Rep |
 
 Conversion is transactional and idempotent:
 

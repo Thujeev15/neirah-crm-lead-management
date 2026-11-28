@@ -12,15 +12,15 @@ so no MySQL server or environment variables are needed.
 
 ## Latest run
 
-Environment: Java 21.0.8, Apache Maven 3.9.12, macOS. Run on 2026-11-27.
+Environment: Java 21.0.8, Apache Maven 3.9.12, macOS. Run on 2026-11-28.
 
 ```
 [INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.BackendApplicationTests
-[INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.integration.ApiIntegrationTest
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.integration.ApiIntegrationTest
 [INFO] Tests run: 17, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.service.LeadServiceTest
 [INFO] Tests run: 4, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.service.ConversionServiceTest
 [INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0 in com.neirah.backend.service.FollowUpServiceTest
-[INFO] Tests run: 44, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Tests run: 45, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
 
@@ -75,6 +75,7 @@ There are two kinds of test:
 | Oversized fields → 400 field errors, not a database conflict | `ApiIntegrationTest.oversizedFieldsReturnValidationErrorsInsteadOfDatabaseConflict` | Integration |
 | Consistent error responses: validation → 400 with field errors | `ApiIntegrationTest.invalidRequestReturnsFieldValidationErrors` | Integration |
 | Consistent error responses: missing record → 404 | `ApiIntegrationTest.missingLeadReturns404` | Integration |
+| Framework errors keep their real status (unknown route → 404, unsupported method → 405, unsupported content type → 415), never 500 | `ApiIntegrationTest.frameworkClientErrorsKeepTheirStatusInsteadOf500` | Integration |
 | Application context starts | `BackendApplicationTests.contextLoads` | Integration |
 
 ## Manual verification against MySQL
